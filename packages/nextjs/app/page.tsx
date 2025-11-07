@@ -2,6 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { NextPage } from "next";
+import { AutumnBackground } from "~~/components/Layout/AutumnBackground";
+import { Banner } from "~~/components/Layout/Banner";
+// 导入布局组件
+import { TopBar } from "~~/components/Layout/TopBar";
 // 导入常量配置
 import {
   FERTILIZER_COST,
@@ -14,7 +18,6 @@ import {
   ZETA_EXCHANGE_RATE,
 } from "~~/constants/game";
 import { I18N } from "~~/constants/i18n";
-import { LEVELS } from "~~/constants/levels";
 import { PETS } from "~~/constants/pets";
 import { GLUCK_SEED_POOLS, LETTER_COLLECTION_PHRASES, REWARDS_LIST } from "~~/constants/rewards";
 import { SEEDS } from "~~/constants/seeds";
@@ -674,8 +677,9 @@ function SocialFarmGame() {
           onProtect={protectFarm}
           lang={lang as Language}
           setLang={setLang}
+          t={t}
         />
-        <Banner />
+        <Banner t={t} />
         <div className="max-w-6xl mx-auto px-3 pb-24">
           <div className="grid md:grid-cols-12 gap-3 mt-3">
             <div className="md:col-span-9">
@@ -923,16 +927,6 @@ function SocialFarmGame() {
 /**********************
  * 组件类型定义        *
  **********************/
-interface TopBarProps {
-  coins: number;
-  zeta: number;
-  tickets: number;
-  exp: number;
-  level: number;
-  onProtect: () => void;
-  lang: Language;
-  setLang: (lang: Language) => void;
-}
 
 interface BoardProps {
   plots: Plot[];
@@ -1029,141 +1023,6 @@ interface PetModalProps {
 /**********************
  * 子组件              *
  **********************/
-function TopBar({ coins, zeta, tickets, exp, level, onProtect, lang, setLang }: TopBarProps) {
-  const nextLvl = clamp(level, 1, LEVELS.length);
-  const curNeed = LEVELS[nextLvl - 1] ?? 0;
-  const nextNeed = LEVELS[nextLvl] ?? LEVELS[LEVELS.length - 1];
-  const prog = LEVELS[nextLvl] ? clamp((exp - curNeed) / (nextNeed - curNeed), 0, 1) : 1;
-
-  // 计算升级所需经验
-  const expNeeded = nextNeed > exp ? nextNeed - exp : 0;
-  const isMaxLevel = level >= LEVELS.length;
-  const [langMenuOpen, setLangMenuOpen] = useState(false);
-
-  // 点击外部关闭下拉菜单
-  useEffect(() => {
-    if (!langMenuOpen) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (!(e.target as HTMLElement).closest(".lang-menu-container")) {
-        setLangMenuOpen(false);
-      }
-    };
-    document.addEventListener("click", handleClickOutside);
-    return () => document.removeEventListener("click", handleClickOutside);
-  }, [langMenuOpen]);
-
-  return (
-    <div className="bg-white/80 backdrop-blur sticky top-0 z-50 shadow-sm border-b border-amber-200/50">
-      <div className="max-w-6xl mx-auto px-3 py-2 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="text-2xl font-serif">ZETA Farm</div>
-          <div className="relative lang-menu-container">
-            <button
-              className="text-sm text-slate-500 hidden md:block hover:text-slate-700 px-2 py-1 rounded"
-              onClick={() => setLangMenuOpen(!langMenuOpen)}
-            >
-              {t("switchLanguage")}
-            </button>
-            {langMenuOpen && (
-              <div
-                className="absolute left-0 mt-1 w-32 bg-white border rounded-lg shadow-lg z-50"
-                onClick={e => e.stopPropagation()}
-              >
-                <button
-                  className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-50 ${lang === "zh" ? "bg-emerald-50" : ""}`}
-                  onClick={() => {
-                    setLang("zh");
-                    setLangMenuOpen(false);
-                  }}
-                >
-                  中文
-                </button>
-                <button
-                  className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-50 ${lang === "en" ? "bg-emerald-50" : ""}`}
-                  onClick={() => {
-                    setLang("en");
-                    setLangMenuOpen(false);
-                  }}
-                >
-                  English
-                </button>
-                <button
-                  className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-50 ${lang === "ko" ? "bg-emerald-50" : ""}`}
-                  onClick={() => {
-                    setLang("ko");
-                    setLangMenuOpen(false);
-                  }}
-                >
-                  한국어
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-2 sm:gap-3">
-          <div className="px-2 sm:px-3 py-1 rounded-full bg-amber-100 border border-amber-200/80">
-            💰 <b>{coins}</b>
-          </div>
-          <div className="px-2 sm:px-3 py-1 rounded-full bg-cyan-100 border border-cyan-200/80">
-            Ζ <b>{zeta}</b>
-          </div>
-          <div className="px-2 sm:px-3 py-1 rounded-full bg-pink-100 border border-pink-200/80">
-            🎟️ <b>{tickets}</b>
-          </div>
-          <div className="px-2 sm:px-3 py-1 rounded-full bg-indigo-100 border border-indigo-200/80">
-            ⭐ <b>{exp}</b>
-          </div>
-          <div className="relative group">
-            <div className="px-2 sm:px-3 py-1 rounded-full bg-emerald-100 border border-emerald-200/80">
-              🎖️ {t("level")}
-              <b>{level}</b>
-            </div>
-            {!isMaxLevel && (
-              <div className="pointer-events-none absolute z-10 hidden group-hover:block right-0 mt-2 w-48 p-2 rounded-lg border bg-white shadow-lg text-center">
-                <div className="text-sm text-slate-700">
-                  {t("levelUpTo")} {level + 1}
-                </div>
-                <div className="text-xs text-slate-500 mt-1">
-                  {t("expNeeded")}：<b>{expNeeded}</b>
-                </div>
-              </div>
-            )}
-          </div>
-          <button
-            className="px-3 py-1 rounded-full bg-rose-100 border border-rose-200/80 hover:bg-rose-200"
-            onClick={onProtect}
-          >
-            🛡️ {t("protect30min")}
-          </button>
-        </div>
-      </div>
-      <div className="h-1 bg-amber-200/40">
-        <div className="h-full bg-emerald-500" style={{ width: `${prog * 100}%` }} />
-      </div>
-    </div>
-  );
-}
-
-function Banner() {
-  return (
-    <div
-      className="text-white py-2 text-center relative overflow-hidden"
-      style={{
-        background: "linear-gradient(135deg, #065f46 0%, #047857 25%, #059669 50%, #047857 75%, #065f46 100%)",
-        backgroundSize: "200% 200%",
-        animation: "gradientShift 3s ease infinite",
-      }}
-    >
-      <style>{`
-        @keyframes gradientShift {
-          0%, 100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-        }
-      `}</style>
-      <div className="max-w-6xl mx-auto px-3 text-sm font-medium relative z-10">{t("seasonText")}</div>
-    </div>
-  );
-}
 
 function Board({ plots, onPlotClick, onHarvest, onShovel, onUnlock }: BoardProps) {
   return (
@@ -2231,46 +2090,6 @@ function PetModal({ open, onClose, pets, onBuyPet }: PetModalProps) {
           })}
         </div>
       </div>
-    </div>
-  );
-}
-
-// === 动态秋景背景 ===
-function AutumnBackground() {
-  // 使用内联 style 注入关键帧，避免外部依赖
-  return (
-    <div className="absolute inset-0 -z-10 overflow-hidden">
-      <style>{`
-        @keyframes cloudMove { 0%{transform:translateX(-20%)} 100%{transform:translateX(120%)} }
-        @keyframes leafFall { 0%{ transform:translateY(-10%) rotate(0deg); opacity:0 } 10%{opacity:1} 100%{ transform:translateY(120%) rotate(360deg); opacity:0 } }
-        @keyframes toastFadeIn { 0%{opacity:0; transform:translateY(20px)} 100%{opacity:1; transform:translateY(0)} }
-        @keyframes toastFadeOut { 0%{opacity:1; transform:translateY(0)} 100%{opacity:0; transform:translateY(-20px)} }
-        @keyframes toastShine { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-      `}</style>
-      {/* 天空渐变 */}
-      <div className="absolute inset-0 bg-gradient-to-b from-amber-100 via-amber-50 to-emerald-50" />
-      {/* 远山/田野色带 */}
-      <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-amber-200/60 to-transparent" />
-      {/* 移动云层 */}
-      <div
-        className="absolute top-10 left-0 right-0 h-20 opacity-60"
-        style={{ animation: "cloudMove 60s linear infinite" }}
-      >
-        <div className="mx-auto max-w-6xl h-full bg-white/40 blur-2xl rounded-full" />
-      </div>
-      {/* 飘落树叶（几层不同时长） */}
-      {Array.from({ length: 12 }).map((_, i) => (
-        <div
-          key={i}
-          className="absolute text-2xl"
-          style={{
-            left: `${Math.random() * 100}%`,
-            animation: `leafFall ${20 + Math.random() * 15}s linear ${Math.random() * 5}s infinite`,
-          }}
-        >
-          {["🍂", "🍁", "🍃"][i % 3]}
-        </div>
-      ))}
     </div>
   );
 }
