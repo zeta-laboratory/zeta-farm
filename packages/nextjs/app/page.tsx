@@ -1092,12 +1092,12 @@ function PlotTile({ plot, onClick, onUnlock }: PlotTileProps) {
   };
 
   const stageEmoji: Record<string, string> = {
-    [STAGE.EMPTY]: "🌱",
+    [STAGE.EMPTY]: "⬜",
     [STAGE.SEED]: "🌱",
     [STAGE.SPROUT]: "🌿",
-    [STAGE.GROWING]: "🪴",
-    [STAGE.RIPE]: seed?.emoji || "✨",
-    [STAGE.WITHER]: "💀",
+    [STAGE.GROWING]: "🌾",
+    [STAGE.RIPE]: seed?.emoji ?? "🍀",
+    [STAGE.WITHER]: "🪦",
   };
 
   return (
@@ -1111,9 +1111,9 @@ function PlotTile({ plot, onClick, onUnlock }: PlotTileProps) {
         {isProtected && <span className="text-white">🛡️{t("protect")}</span>}
       </div>
       <div className="flex flex-col items-center py-3 h-32 justify-center relative">
-        <div className="text-4xl">{st === STAGE.RIPE && seed ? seed.emoji : stageEmoji[st] || "🌱"}</div>
+        <div className="text-4xl">{st === STAGE.RIPE && seed ? seed.emoji : stageEmoji[st]}</div>
         <div className="text-sm mt-1 font-medium text-amber-950">{seed ? seed.name : t("empty")}</div>
-        <div className="text-xs text-amber-900/70 h-4">{seed ? labelByStage[st] || "" : ""}</div>
+        <div className="text-xs text-amber-900/70 h-4">{seed ? labelByStage[st] : ""}</div>
         {seed && st === STAGE.RIPE && (
           <div className="text-[11px] text-amber-900/60 mt-1">
             {t("witherIn")}：{fmtTime(timeNext)}
