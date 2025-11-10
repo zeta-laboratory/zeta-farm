@@ -83,6 +83,9 @@ contract FarmTreasury is EIP712, Ownable {
     /// @notice 社区资金提取事件
     event CommunityWithdrawn(address indexed to, uint256 amount);
 
+    /// @notice 初始奖池注入事件
+    event InitialPrizePoolDeposited(address indexed from, uint256 amount);
+
     // ============================================
     // EIP-712 类型哈希
     // ============================================
@@ -283,7 +286,24 @@ contract FarmTreasury is EIP712, Ownable {
     }
 
     /**
-     * @notice 接收 ETH
+     * @notice 注入初始奖池资金（比如 6000 ZETA）
+     * @dev 任何人都可以调用，资金会被分配到奖池
      */
-    receive() external payable {}
+    function depositToPrizePool() external payable {
+        require(msg.value > 0, "Must deposit some ZETA");
+        
+        prizePoolBalance += msg.value;
+        
+        emit InitialPrizePoolDeposited(msg.sender, msg.value);
+    }
+
+    /**
+     * @notice 接收 ETH（也会被分配到奖池）
+     */
+    receive() external payable {
+        if (msg.value > 0) {
+            prizePoolBalance += msg.value;
+            emit InitialPrizePoolDeposited(msg.sender, msg.value);
+        }
+    }
 }

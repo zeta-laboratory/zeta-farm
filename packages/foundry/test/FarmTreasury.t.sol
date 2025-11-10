@@ -260,6 +260,57 @@ contract FarmTreasuryTest is Test {
         assertEq(communityAddress.balance, beforeBalance + expectedAmount);
     }
 
+    function testDepositToPrizePool() public {
+        // 注入初始奖池资金（比如 6000 ZETA）
+        uint256 initialDeposit = 6000 ether;
+        
+        vm.deal(owner, initialDeposit);
+        
+        vm.expectEmit(true, false, false, true);
+        emit FarmTreasury.InitialPrizePoolDeposited(owner, initialDeposit);
+        farmTreasury.depositToPrizePool{value: initialDeposit}();
+        
+        assertEq(farmTreasury.prizePoolBalance(), initialDeposit);
+        assertEq(address(farmTreasury).balance, initialDeposit);
+    }
+
+    function testReceiveEther() public {
+        // 直接向合约转账
+        uint256 depositAmount = 6000 ether;
+        vm.deal(user, depositAmount);
+        
+        vm.prank(user);
+        (bool success, ) = address(farmTreasury).call{value: depositAmount}("");
+        require(success, "Transfer failed");
+        
+        assertEq(farmTreasury.prizePoolBalance(), depositAmount);
+        assertEq(address(farmTreasury).balance, depositAmount);
+    }
+
+    function testDepositAndUserActions() public {
+        // 1. 先注入初始奖池 6000 ZETA
+        uint256 initialDeposit = 6000 ether;
+        vm.deal(owner, initialDeposit);
+        farmTreasury.depositToPrizePool{value: initialDeposit}();
+        
+        assertEq(farmTreasury.prizePoolBalance(), initialDeposit);
+        
+        // 2. 用户操作累积更多资金
+        _recordAction(user, "plant", 1, 0);
+        _recordAction(user, "water", 2, 1);
+        
+        // 3. 验证奖池累计 = 初始 6000 + 用户操作贡献
+        uint256 expectedTotal = initialDeposit + (PRIZE_POOL_AMOUNT * 2);
+        assertEq(farmTreasury.prizePoolBalance(), expectedTotal);
+        
+        // 4. 提取奖池资金
+        uint256 beforeBalance = prizePoolAddress.balance;
+        farmTreasury.withdrawPrizePool();
+        
+        assertEq(farmTreasury.prizePoolBalance(), 0);
+        assertEq(prizePoolAddress.balance, beforeBalance + expectedTotal);
+    }
+
     // Helper function
     function _recordAction(
         address _user,
