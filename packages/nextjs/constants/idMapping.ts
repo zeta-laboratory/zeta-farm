@@ -13,20 +13,20 @@ export const BACKEND_TO_FRONTEND_SEED: Record<string, string> = {
   seed_1: "strawberry", // 草莓
   seed_2: "corn", // 玉米
   seed_3: "grape", // 葡萄
-  seed_4: "watermelon", // 西瓜
-  seed_5: "pumpkin", // 南瓜
-  seed_6: "tomato", // 番茄
-  seed_7: "eggplant", // 茄子
-  seed_8: "cabbage", // 白菜
-  seed_9: "potato", // 土豆
-  seed_10: "carrot", // 胡萝卜
-  seed_11: "broccoli", // 西兰花
-  seed_12: "lettuce", // 生菜
-  seed_13: "onion", // 洋葱
-  seed_14: "garlic", // 大蒜
-  seed_15: "pepper", // 辣椒
-  seed_16: "cucumber", // 黄瓜
-  seed_17: "pea", // 豌豆
+  seed_4: "tomato", // 番茄
+  seed_5: "blueberry", // 蓝莓
+  seed_6: "pumpkin", // 南瓜
+  seed_7: "pineapple", // 菠萝
+  seed_8: "coffee", // 咖啡豆
+  seed_9: "cocoa", // 可可豆
+  seed_10: "tea", // 茶叶
+  seed_11: "chili", // 辣椒
+  seed_12: "rice", // 水稻
+  seed_13: "wheat", // 小麦
+  seed_14: "peach", // 桃子
+  seed_15: "pear", // 梨子
+  seed_16: "mango", // 芒果
+  seed_17: "cherry", // 樱桃
 };
 
 /**
@@ -37,20 +37,20 @@ export const FRONTEND_TO_BACKEND_SEED: Record<string, string> = {
   strawberry: "seed_1",
   corn: "seed_2",
   grape: "seed_3",
-  watermelon: "seed_4",
-  pumpkin: "seed_5",
-  tomato: "seed_6",
-  eggplant: "seed_7",
-  cabbage: "seed_8",
-  potato: "seed_9",
-  carrot: "seed_10",
-  broccoli: "seed_11",
-  lettuce: "seed_12",
-  onion: "seed_13",
-  garlic: "seed_14",
-  pepper: "seed_15",
-  cucumber: "seed_16",
-  pea: "seed_17",
+  tomato: "seed_4",
+  blueberry: "seed_5",
+  pumpkin: "seed_6",
+  pineapple: "seed_7",
+  coffee: "seed_8",
+  cocoa: "seed_9",
+  tea: "seed_10",
+  chili: "seed_11",
+  rice: "seed_12",
+  wheat: "seed_13",
+  peach: "seed_14",
+  pear: "seed_15",
+  mango: "seed_16",
+  cherry: "seed_17",
 };
 
 /**
@@ -61,20 +61,20 @@ export const BACKEND_TO_FRONTEND_FRUIT: Record<string, string> = {
   fruit_1: "strawberry",
   fruit_2: "corn",
   fruit_3: "grape",
-  fruit_4: "watermelon",
-  fruit_5: "pumpkin",
-  fruit_6: "tomato",
-  fruit_7: "eggplant",
-  fruit_8: "cabbage",
-  fruit_9: "potato",
-  fruit_10: "carrot",
-  fruit_11: "broccoli",
-  fruit_12: "lettuce",
-  fruit_13: "onion",
-  fruit_14: "garlic",
-  fruit_15: "pepper",
-  fruit_16: "cucumber",
-  fruit_17: "pea",
+  fruit_4: "tomato",
+  fruit_5: "blueberry",
+  fruit_6: "pumpkin",
+  fruit_7: "pineapple",
+  fruit_8: "coffee",
+  fruit_9: "cocoa",
+  fruit_10: "tea",
+  fruit_11: "chili",
+  fruit_12: "rice",
+  fruit_13: "wheat",
+  fruit_14: "peach",
+  fruit_15: "pear",
+  fruit_16: "mango",
+  fruit_17: "cherry",
 };
 
 /**
@@ -85,20 +85,20 @@ export const FRONTEND_TO_BACKEND_FRUIT: Record<string, string> = {
   strawberry: "fruit_1",
   corn: "fruit_2",
   grape: "fruit_3",
-  watermelon: "fruit_4",
-  pumpkin: "fruit_5",
-  tomato: "fruit_6",
-  eggplant: "fruit_7",
-  cabbage: "fruit_8",
-  potato: "fruit_9",
-  carrot: "fruit_10",
-  broccoli: "fruit_11",
-  lettuce: "fruit_12",
-  onion: "fruit_13",
-  garlic: "fruit_14",
-  pepper: "fruit_15",
-  cucumber: "fruit_16",
-  pea: "fruit_17",
+  tomato: "fruit_4",
+  blueberry: "fruit_5",
+  pumpkin: "fruit_6",
+  pineapple: "fruit_7",
+  coffee: "fruit_8",
+  cocoa: "fruit_9",
+  tea: "fruit_10",
+  chili: "fruit_11",
+  rice: "fruit_12",
+  wheat: "fruit_13",
+  peach: "fruit_14",
+  pear: "fruit_15",
+  mango: "fruit_16",
+  cherry: "fruit_17",
 };
 
 /**
