@@ -10,41 +10,52 @@ export interface SignatureResponse {
 }
 
 export interface UserStateResponse {
-  success: boolean;
-  data: {
-    address: string;
-    coins: number;
-    zeta: number;
-    tickets: number;
-    exp: number;
-    level: number;
-    plots: Plot[];
-    inventory: Record<string, number>;
+  wallet_address: string;
+  zeta: number;
+  tickets: number;
+  coins: number;
+  exp: number;
+  level: number;
+  pet_list: string[];
+  lastOfflineClaimAt: Date;
+  last_checkin_date: string;
+  backpack: {
+    seeds: Record<string, number>;
     fruits: Record<string, number>;
     fertilizer: number;
-    pets: Record<string, boolean>;
-    robotSubscribed: boolean;
-    checkinLastDate: string;
-    checkinRecords: Record<string, number[]>;
-    collectedLetters: Record<string, number>;
-    redeemedRewards: string[];
-    protectedUntil: number;
   };
-  message?: string;
+  phrase_letters: Record<string, number>;
+  redeemed_rewards: string[];
+  plots_list: BackendPlot[];
+  createdAt: Date;
+  updatedAt: Date;
+  _meta?: {
+    serverTime: number;
+    offlineEarnings: number;
+    timestamp: string;
+  };
 }
 
-export interface Plot {
-  id: number;
+export interface BackendPlot {
+  plot_index: number;
   unlocked: boolean;
   seedId: string | null;
   plantedAt: number | null;
   pausedDuration: number;
+  pausedAt: number | null;
   waterRequirements: WaterRequirement[];
   weedRequirements: WeedRequirement[];
-  weeds: boolean;
-  pests: boolean;
-  protectedUntil: number;
   fertilized: boolean;
+  protectedUntil: number;
+  status?: {
+    stage: string;
+    needsWater: boolean;
+    hasWeeds: boolean;
+    hasPests: boolean;
+    effectiveElapsedTime: number;
+    progress: number;
+    isReady: boolean;
+  };
 }
 
 export interface WaterRequirement {

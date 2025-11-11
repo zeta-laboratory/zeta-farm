@@ -40,24 +40,32 @@ export async function apiRequest<T>(endpoint: string, options?: RequestInit): Pr
   }
 }
 
-export async function apiGet<T>(endpoint: string): Promise<T> {
-  return apiRequest<T>(endpoint, { method: "GET" });
+export async function apiGet<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  return apiRequest<T>(endpoint, {
+    method: "GET",
+    ...(options || {}),
+  });
 }
 
-export async function apiPost<T>(endpoint: string, body?: any): Promise<T> {
+export async function apiPost<T>(endpoint: string, body?: any, options?: RequestInit): Promise<T> {
   return apiRequest<T>(endpoint, {
     method: "POST",
     body: JSON.stringify(body),
+    ...(options || {}),
   });
 }
 
-export async function apiPut<T>(endpoint: string, body?: any): Promise<T> {
+export async function apiPut<T>(endpoint: string, body?: any, options?: RequestInit): Promise<T> {
   return apiRequest<T>(endpoint, {
     method: "PUT",
     body: JSON.stringify(body),
+    ...(options || {}),
   });
 }
 
-export async function apiDelete<T>(endpoint: string): Promise<T> {
-  return apiRequest<T>(endpoint, { method: "DELETE" });
+export async function apiDelete<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  return apiRequest<T>(endpoint, {
+    method: "DELETE",
+    ...(options || {}),
+  });
 }

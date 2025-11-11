@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { NextPage } from "next";
+import { useAccount } from "wagmi";
 import { Header } from "~~/components/Header";
 import { AutumnBackground } from "~~/components/Layout/AutumnBackground";
 import { Banner } from "~~/components/Layout/Banner";
@@ -19,47 +20,33 @@ import {
   ShopModal,
 } from "~~/components/Modals";
 // 导入常量配置
-import {
-  FERTILIZER_COST,
-  LETTER_DROP_PROBABILITY,
-  PEST_PROBABILITY,
-  PROTECT_DURATION_SEC,
-  PROTECT_PURCHASE_COST,
-  TICKET_EXCHANGE_RATE,
-  TICK_MS,
-  ZETA_EXCHANGE_RATE,
-} from "~~/constants/game";
+import { PEST_PROBABILITY, TICK_MS } from "~~/constants/game";
 import { I18N } from "~~/constants/i18n";
+// 导入 ID 映射工具
+import { convertBackendStateToFrontend, frontendSeedToBackend } from "~~/constants/idMapping";
 import { PETS } from "~~/constants/pets";
-import { GLUCK_SEED_POOLS } from "~~/constants/rewards";
 import { SEEDS } from "~~/constants/seeds";
+// 导入 hooks
+import { useGameAction } from "~~/hooks/useGameAction";
+// 导入 API 服务
+import { getUserState } from "~~/services/api/userService";
 // 导入类型定义
 import type { CurrencyType, GameSave, Language, Plot, ToolType } from "~~/types";
 // 导入游戏工具函数
 import {
   // 作物阶段相关
-  STAGE, // 通用工具
-  // 存档相关
-  createDefaultSave, // UI 相关
+  STAGE, // UI 相关
   cursorForTool, // 签到相关
-  dailyCheckin,
-  fmtTime, // 字母收集相关
-  getAllRequiredLetters, // 等级相关
+  fmtTime, // 等级相关
   getLevel, // 地块相关
   getPlotUnlockCost,
   getPlotUnlockLevel,
-  getTodayDateStr, // 需求相关
-  getWateringCount,
-  getWeedingCount,
-  getYearMonthStr,
   hasCheckedInToday, // 时间相关
   now,
   randomChance,
-  replacePlot,
   soilTextureStyle,
   stageOf,
-  timeToNextStage, // 产量相关
-  yieldAmount,
+  timeToNextStage,
 } from "~~/utils/game";
 
 /**********************
@@ -101,43 +88,103 @@ function t(key: string): string {
  * 主组件              *
  **********************/
 function SocialFarmGame() {
+  // 钱包连接
+  const { address, isConnected } = useAccount();
+
+  // 游戏操作 hook
+  const gameAction = useGameAction({
+    onSuccess: backendState => {
+      // 转换后端数据为前端格式并更新游戏状态
+      const frontendState = convertBackendStateToFrontend(backendState);
+      setSave(prev => ({
+        ...prev,
+        ...frontendState,
+      }));
+    },
+    onError: error => {
+      console.error("Game action failed:", error);
+      toast(error.message);
+    },
+    showToast: message => {
+      toast(message);
+    },
+  });
+
   const [lang, setLang] = useState(() => detectLanguage());
 
-  // 当语言改变时，更新全局变量并保存
+  // 当语言改变时，更新全局变量并保存到 localStorage（语言设置保留本地存储）
   useEffect(() => {
     currentLanguage = lang;
     localStorage.setItem("farm-language", lang);
   }, [lang]);
 
-  const [save, setSave] = useState(() => {
-    const raw = localStorage.getItem("social-farm-save-v1");
-    if (raw) {
-      try {
-        const loaded = JSON.parse(raw);
-        // 确保新字段存在（向后兼容）
-        if (loaded.checkinLastDate === undefined) loaded.checkinLastDate = "";
-        if (loaded.checkinRecords === undefined) loaded.checkinRecords = {};
-        if (loaded.collectedLetters === undefined) loaded.collectedLetters = {};
-        if (loaded.redeemedRewards === undefined) loaded.redeemedRewards = [];
-        if (loaded.fertilizer === undefined) loaded.fertilizer = 0;
-        if (loaded.pets === undefined) loaded.pets = {};
-        if (loaded.robotSubscribed === undefined) loaded.robotSubscribed = false;
-        return loaded;
-      } catch (e) {
-        console.warn("Load save failed", e);
-      }
-    }
-    return createDefaultSave();
+  // 游戏状态 - 初始化为空状态，等待从后端加载
+  const [save, setSave] = useState<GameSave>({
+    plots: Array(24)
+      .fill(null)
+      .map((_, i) => ({
+        id: i,
+        unlocked: i < 6, // 默认前6块地解锁
+        seedId: null,
+        plantedAt: null,
+        fertilized: false,
+        weeds: false,
+        pests: false,
+        wateredAt: null,
+        waterRequirements: [],
+        weedRequirements: [],
+        pausedDuration: 0,
+        pausedAt: null,
+        protectedUntil: 0,
+      })),
+    inventory: {},
+    coins: 0,
+    zeta: 0,
+    tickets: 0,
+    exp: 0,
+    tool: "harvest" as ToolType,
+    selectedSeed: null,
+    fruits: {},
+    lastLogin: now(),
+    checkinLastDate: "",
+    checkinRecords: {},
+    collectedLetters: {},
+    redeemedRewards: [],
+    fertilizer: 0,
+    pets: {},
+    robotSubscribed: false,
+    protectFreeUsed: false,
+    protectBoughtToday: 0,
+    protectLastDate: "",
+    __testingBoostApplied: false,
   });
 
-  const lvl = useMemo(() => getLevel(save.exp), [save.exp]);
-
-  // 测试加成功能已移除，新用户使用 createDefaultSave() 的默认值
-
-  // 自动保存
+  // 监听钱包连接，加载用户数据
   useEffect(() => {
-    localStorage.setItem("social-farm-save-v1", JSON.stringify(save));
-  }, [save]);
+    if (isConnected && address) {
+      getUserState(address)
+        .then(response => {
+          // 将后端返回的数据映射到游戏状态（使用统一的转换函数）
+          const mappedState = convertBackendStateToFrontend(response);
+
+          setSave(prev => ({
+            ...prev,
+            ...mappedState,
+          }));
+
+          toast(`Welcome back! Loaded game state for ${address.slice(0, 6)}...${address.slice(-4)}`);
+        })
+        .catch(error => {
+          console.error("Failed to load user state:", error);
+          toast("Failed to load game state. Using default state.");
+        })
+        .finally(() => {
+          // Loading complete
+        });
+    }
+  }, [isConnected, address]);
+
+  const lvl = useMemo(() => getLevel(save.exp), [save.exp]);
 
   // 背景音乐自动播放（循环）
   useEffect(() => {
@@ -259,399 +306,304 @@ function SocialFarmGame() {
     setSave((s: any) => ({ ...s, selectedSeed: id, tool: "plant" }));
   }
 
-  // 购买种子（只能用金币，无等级限制）
-  function buySeed(id: string, count = 1) {
-    const seed = SEEDS[id as keyof typeof SEEDS];
-    if (!seed) return toast(t("unknownSeed"));
-    const cost = seed.cost * count;
-    if (save.coins < cost) return toast(t("insufficientCoins"));
-    setSave((s: any) => ({
-      ...s,
-      coins: s.coins - cost,
-      inventory: { ...s.inventory, [id]: (s.inventory[id] || 0) + count },
-    }));
-    toast(`${t("bought")} ${seed.name} ×${count}，${t("consumed")} ${cost} ${t("coins")}`);
-  }
-
-  // 购买肥料（只能用金币）
-  function buyFertilizer(count = 1) {
-    const cost = FERTILIZER_COST * count;
-    if (save.coins < cost) return toast(t("insufficientCoins"));
-    setSave((s: any) => ({
-      ...s,
-      coins: s.coins - cost,
-      fertilizer: (s.fertilizer || 0) + count,
-    }));
-    toast(`${t("bought")} ${t("fertilizer")} ×${count}，${t("consumed")} ${cost} ${t("coins")}`);
-  }
-
-  // 购买宠物
-  function buyPet(petId: string) {
-    const pet = PETS.find((p: any) => p.id === petId);
-    if (!pet) return toast(t("unknownPet"));
-    if (save.coins < pet.price) return toast(t("insufficientCoins"));
-    const pets = save.pets || {};
-    if (pets[petId]) return toast(t("alreadyOwnPet"));
-
-    setSave((s: any) => ({
-      ...s,
-      coins: s.coins - pet.price,
-      pets: { ...(s.pets || {}), [petId]: true },
-    }));
-    toast(`${t("bought")} ${pet.name}！${t("offlineCoins")}：${(pet.coinsPerHour * 24).toFixed(1)} ${t("perHour")}`);
-  }
-
-  // 行为：播种/收获/等
-  function plant(plot: Plot) {
+  // ========== Game Actions (Blockchain-based) ==========
+  // 行为：播种
+  async function plant(plot: Plot) {
+    if (!isConnected || !address) return toast("Please connect wallet first");
     if (!plot.unlocked) return toast(t("plotLocked"));
     if (!save.selectedSeed) return toast(t("selectSeedFirst"));
     if (plot.seedId) return toast(t("plotOccupied"));
     const sid = save.selectedSeed;
     if ((save.inventory[sid] || 0) <= 0) return toast(t("insufficientSeeds"));
-    const seed = SEEDS[sid as keyof typeof SEEDS];
-    const [, , s3] = seed.stages; // s1, s2 未使用，但保留解构以便理解
 
-    // 生成浇水需求时间点（在生长过程中随机分布）
-    const waterCount = getWateringCount(seed.levelReq);
-    const waterRequirements = [];
-    for (let i = 0; i < waterCount; i++) {
-      const time = Math.floor(Math.random() * s3);
-      waterRequirements.push({ time, done: false });
-    }
-    waterRequirements.sort((a, b) => a.time - b.time); // 按时间排序
+    try {
+      // 转换前端 seed ID 为后端 ID
+      const backendSeedId = frontendSeedToBackend(sid);
 
-    // 生成除草需求时间点
-    const weedCount = getWeedingCount(seed.levelReq);
-    const weedRequirements = [];
-    for (let i = 0; i < weedCount; i++) {
-      const time = Math.floor(Math.random() * s3);
-      weedRequirements.push({ time, done: false });
-    }
-    weedRequirements.sort((a, b) => a.time - b.time); // 按时间排序
+      await gameAction.execute("plant", {
+        plotId: plot.id,
+        seedId: backendSeedId,
+      });
 
-    const newPlot = {
-      ...plot,
-      seedId: sid,
-      plantedAt: now(),
-      fertilized: false,
-      wateredAt: null,
-      weeds: false,
-      pests: false,
-      waterRequirements,
-      weedRequirements,
-      pausedDuration: 0,
-      pausedAt: null,
-    };
-    const inv = { ...save.inventory, [sid]: (save.inventory[sid] || 0) - 1 };
-
-    // 随机掉落字母
-    let letterDropped = null;
-    if (Math.random() < LETTER_DROP_PROBABILITY) {
-      const letters = getAllRequiredLetters();
-      letterDropped = letters[Math.floor(Math.random() * letters.length)];
-    }
-
-    const nextLetters = letterDropped
-      ? { ...save.collectedLetters, [letterDropped]: (save.collectedLetters[letterDropped] || 0) + 1 }
-      : save.collectedLetters;
-
-    setSave((s: GameSave) => ({
-      ...s,
-      plots: replacePlot(s.plots, newPlot),
-      inventory: inv,
-      collectedLetters: nextLetters,
-    }));
-
-    if (letterDropped) {
-      toast(`${t("letterDropped")}: ${letterDropped}`);
+      // onSuccess 回调会自动更新状态
+      toast(`${t("planted")} ${SEEDS[sid as keyof typeof SEEDS].name}`);
+    } catch (error) {
+      // 错误已在 gameAction 中处理
+      console.error("Plant failed:", error);
     }
   }
 
-  function harvest(plot: Plot) {
+  // 行为：收获
+  async function harvest(plot: Plot) {
+    if (!isConnected || !address) return toast("Please connect wallet first");
     if (!plot.unlocked) return;
     if (!plot.seedId) return;
     const st = stageOf(plot);
     if (st !== STAGE.RIPE) return toast(t("notRipe"));
-    const amount = yieldAmount(plot);
-    const seed = SEEDS[plot.seedId as keyof typeof SEEDS];
-    const exp = seed.exp * amount; // 经验值 = 基础经验 × 收获数量
 
-    // 随机掉落字母
-    let letterDropped: string | null = null;
-    if (Math.random() < LETTER_DROP_PROBABILITY) {
-      const letters = getAllRequiredLetters();
-      letterDropped = (letters[Math.floor(Math.random() * letters.length)] as string) || null;
-    }
+    try {
+      await gameAction.execute("harvest", {
+        plotId: plot.id,
+      });
 
-    const cleared: Plot = {
-      ...plot,
-      seedId: null,
-      plantedAt: null,
-      fertilized: false,
-      weeds: false,
-      pests: false,
-      waterRequirements: [],
-      weedRequirements: [],
-      pausedDuration: 0,
-      pausedAt: null,
-    };
-
-    setSave((s: any) => {
-      const next = {
-        ...s,
-        exp: s.exp + exp,
-        plots: replacePlot(s.plots, cleared),
-        fruits: { ...(s.fruits || {}), [plot.seedId!]: ((s.fruits || {})[plot.seedId!] || 0) + amount },
-      };
-
-      // 更新字母收集
-      if (letterDropped) {
-        next.collectedLetters = {
-          ...(s.collectedLetters || {}),
-          [letterDropped]: ((s.collectedLetters || {})[letterDropped] || 0) + 1,
-        };
-      }
-
-      return next;
-    });
-
-    // 显示收获提示
-    if (letterDropped) {
-      toast(
-        `${t("harvested")} ${seed.name} ×${amount}，${t("expGained")}${exp}，${t("letterDropped")}: ${letterDropped}`,
-      );
-    } else {
-      toast(`${t("harvested")} ${seed.name} ×${amount}，${t("expGained")}${exp}，${t("sellAtShopFor")}`);
+      // onSuccess 回调会自动更新状态
+      const seed = SEEDS[plot.seedId as keyof typeof SEEDS];
+      toast(`${t("harvested")} ${seed.name}`);
+    } catch (error) {
+      console.error("Harvest failed:", error);
     }
   }
 
-  function water(plot: Plot) {
+  // 行为：浇水
+  async function water(plot: Plot) {
+    if (!isConnected || !address) return toast("Please connect wallet first");
     if (!plot.unlocked) return;
     if (!plot.seedId) return;
-    const actualElapsed = now() - plot.plantedAt! - (plot.pausedDuration || 0);
-    let next = { ...plot, wateredAt: now() };
-    let completedAny = false;
 
-    // 检查并完成已到达的浇水需求
-    const waterReqs = [...(plot.waterRequirements || [])];
-    for (let i = 0; i < waterReqs.length; i++) {
-      if (!waterReqs[i].done && actualElapsed >= waterReqs[i].time) {
-        waterReqs[i] = { ...waterReqs[i], done: true };
-        completedAny = true;
-      }
-    }
+    try {
+      await gameAction.execute("water", {
+        plotId: plot.id,
+      });
 
-    if (completedAny) {
-      next = {
-        ...next,
-        waterRequirements: waterReqs,
-        pausedAt: null, // 清除暂停（如果所有需求都完成了会在下次tick处理）
-      };
+      // onSuccess 回调会自动更新状态
       toast(t("watered"));
+    } catch (error) {
+      console.error("Water failed:", error);
     }
-
-    setSave((s: any) => ({ ...s, plots: replacePlot(s.plots, next) }));
   }
-  function weed(plot: Plot) {
+
+  // 行为：除草
+  async function weed(plot: Plot) {
+    if (!isConnected || !address) return toast("Please connect wallet first");
     if (!plot.unlocked) return;
     if (!plot.seedId) return;
-    const actualElapsed = now() - plot.plantedAt! - (plot.pausedDuration || 0);
-    let completedAny = false;
+    if (!plot.weeds) return toast(t("noWeeds"));
 
-    // 检查并完成已到达的除草需求
-    const weedReqs = [...(plot.weedRequirements || [])];
-    for (let i = 0; i < weedReqs.length; i++) {
-      if (!weedReqs[i].done && actualElapsed >= weedReqs[i].time) {
-        weedReqs[i] = { ...weedReqs[i], done: true };
-        completedAny = true;
-      }
-    }
+    try {
+      await gameAction.execute("weed", {
+        plotId: plot.id,
+      });
 
-    if (completedAny) {
-      const next = {
-        ...plot,
-        weedRequirements: weedReqs,
-        weeds: false, // 也清除杂草状态
-        pausedAt: null, // 清除暂停
-      };
-      setSave((s: any) => ({ ...s, plots: replacePlot(s.plots, next) }));
+      // onSuccess 回调会自动更新状态
       toast(t("weeded"));
-    } else if (plot.weeds) {
-      // 处理随机出现的杂草（不影响需求）
-      setSave((s: any) => ({ ...s, plots: replacePlot(s.plots, { ...plot, weeds: false }) }));
-    } else {
-      toast(t("noWeeds"));
+    } catch (error) {
+      console.error("Weed failed:", error);
     }
   }
-  function pesticide(plot: Plot) {
+
+  // 行为：除虫
+  async function pesticide(plot: Plot) {
+    if (!isConnected || !address) return toast("Please connect wallet first");
     if (!plot.unlocked) return;
     if (!plot.seedId) return;
     if (!plot.pests) return toast(t("noPests"));
-    setSave((s: any) => ({ ...s, plots: replacePlot(s.plots, { ...plot, pests: false }) }));
-  }
-  function shovel(plot: Plot) {
-    if (!plot.unlocked) return;
-    if (!plot.seedId) return;
-    const cleared: Plot = {
-      ...plot,
-      seedId: null,
-      plantedAt: null,
-      fertilized: false,
-      weeds: false,
-      pests: false,
-      waterRequirements: [],
-      weedRequirements: [],
-      pausedDuration: 0,
-      pausedAt: null,
-    };
-    setSave((s: any) => ({ ...s, plots: replacePlot(s.plots, cleared) }));
+
+    try {
+      await gameAction.execute("pesticide", {
+        plotId: plot.id,
+      });
+
+      // onSuccess 回调会自动更新状态
+      toast(t("pestsRemoved"));
+    } catch (error) {
+      console.error("Pesticide failed:", error);
+    }
   }
 
-  // 施肥功能
-  function applyFertilizer(plot: Plot) {
+  // 行为：铲除
+  async function shovel(plot: Plot) {
+    if (!isConnected || !address) return toast("Please connect wallet first");
+    if (!plot.unlocked) return;
+    if (!plot.seedId) return;
+
+    try {
+      await gameAction.execute("shovel", {
+        plotId: plot.id,
+      });
+
+      // onSuccess 回调会自动更新状态
+      toast(t("removed"));
+    } catch (error) {
+      console.error("Shovel failed:", error);
+    }
+  }
+
+  // 行为：施肥
+  async function applyFertilizer(plot: Plot) {
+    if (!isConnected || !address) return toast("Please connect wallet first");
     if (!plot.unlocked) return toast(t("plotNotUnlocked"));
     if (!plot.seedId) return toast(t("plantFirst"));
     if (plot.fertilized) return toast(t("alreadyFertilized"));
     if ((save.fertilizer || 0) <= 0) return toast(t("fertilizerInsufficient"));
 
-    const seed = SEEDS[plot.seedId as keyof typeof SEEDS];
-    let reductionFactor = 1; // 减少时间比例
+    try {
+      await gameAction.execute("fertilize", {
+        plotId: plot.id,
+      });
 
-    // 根据作物稀有程度（levelReq）决定效果
-    if (seed.levelReq <= 3) {
-      // 直接成熟
-      reductionFactor = 0;
-    } else if (seed.levelReq <= 6) {
-      // 减少1/2时间
-      reductionFactor = 0.5;
-    } else if (seed.levelReq <= 9) {
-      // 减少1/3时间
-      reductionFactor = 2 / 3;
-    } else if (seed.levelReq <= 12) {
-      // 减少1/6时间
-      reductionFactor = 5 / 6;
-    } else {
-      // 减少1/24时间
-      reductionFactor = 23 / 24;
-    }
-
-    // 计算新的种植时间
-    let newPlantedAt = plot.plantedAt!;
-    if (reductionFactor === 0) {
-      // 直接成熟：设置 plantedAt 使其已成熟
-      const [, , s3] = seed.stages; // s1, s2 未使用，但保留解构以便理解
-      newPlantedAt = now() - s3;
-    } else {
-      // 调整时间：让已过去的时间相对更长
-      const elapsed = now() - plot.plantedAt!;
-      newPlantedAt = now() - elapsed / reductionFactor;
-    }
-
-    setSave((s: any) => ({
-      ...s,
-      fertilizer: (s.fertilizer || 0) - 1,
-      plots: replacePlot(s.plots, { ...plot, fertilized: true, plantedAt: newPlantedAt }),
-    }));
-
-    if (reductionFactor === 0) {
-      toast(t("fertilizerSuccessInstant"));
-    } else {
-      toast(`${t("fertilizerSuccess")} ${Math.round((1 - reductionFactor) * 100)}${t("fertilizerPercent")}`);
+      // onSuccess 回调会自动更新状态
+      toast(t("fertilizerSuccess"));
+    } catch (error) {
+      console.error("Fertilize failed:", error);
     }
   }
 
-  // 保护农场（30分钟）
-  function protectFarm() {
-    const durationSec = PROTECT_DURATION_SEC;
-    const today = getTodayDateStr();
+  // 行为：农场保护
+  async function protectFarm() {
+    if (!isConnected || !address) return toast("Please connect wallet first");
 
-    // 检查是否需要重置每日计数（新的一天）
-    const needReset = save.protectLastDate !== today;
-    const protectFreeUsed = needReset ? false : save.protectFreeUsed || false;
-    const protectBoughtToday = needReset ? 0 : save.protectBoughtToday || 0;
+    try {
+      await gameAction.execute("protect", {});
 
-    // 如果有免费次数，使用免费保护
-    if (!protectFreeUsed) {
-      setSave((s: GameSave) => ({
-        ...s,
-        plots: s.plots.map((p: Plot) => ({ ...p, protectedUntil: now() + durationSec })),
-        protectFreeUsed: true,
-        protectLastDate: today,
-      }));
+      // onSuccess 回调会自动更新状态
       toast(t("protectUsed"));
+    } catch (error) {
+      console.error("Protect failed:", error);
+    }
+  }
+
+  // 行为：解锁地块
+  async function unlockPlot(plot: Plot) {
+    if (!isConnected || !address) return toast("Please connect wallet first");
+    if (plot.unlocked) return toast(t("plotUnlocked"));
+
+    const reqLv = getPlotUnlockLevel(plot.id);
+    if (lvl < reqLv) {
+      return toast(`${t("levelInsufficient")}${reqLv}${t("currentLevel")}${lvl}${t("levelText")}`);
+    }
+
+    const cost = getPlotUnlockCost(plot.id);
+    if (save.coins < cost) return toast(t("insufficientCoins"));
+
+    try {
+      await gameAction.execute("unlockPlot", {
+        plotId: plot.id,
+      });
+
+      // onSuccess 回调会自动更新状态
+      toast(`${t("plotUnlockedSuccess")}${plot.id + 1}，${t("unlockCost")}${cost}${t("coins")}`);
+    } catch (error) {
+      console.error("Unlock plot failed:", error);
+    }
+  }
+
+  // 重置存档（现在通过后端API重置）
+  function resetSave() {
+    if (!confirm(t("resetConfirm"))) return;
+
+    if (!isConnected || !address) {
+      toast("Please connect wallet first");
       return;
     }
 
-    // 如果没有免费次数，检查购买次数
-    if (protectBoughtToday >= 3) {
-      return toast(t("protectLimit"));
-    }
-
-    const cost = PROTECT_PURCHASE_COST;
-    if (save.coins < cost) return toast(t("protectCost"));
-
-    setSave((s: GameSave) => ({
-      ...s,
-      coins: s.coins - cost,
-      plots: s.plots.map((p: Plot) => ({ ...p, protectedUntil: now() + durationSec })),
-      protectBoughtToday: protectBoughtToday + 1,
-      protectLastDate: today,
-    }));
-    toast(`${t("protectBought")}${2 - protectBoughtToday}）`);
-  }
-
-  // 开垦土地
-  function unlockPlot(plot: Plot) {
-    if (plot.unlocked) return toast(t("plotUnlocked"));
-    const cost = getPlotUnlockCost(plot.id);
-    const requiredLevel = getPlotUnlockLevel(plot.id);
-    const currentLevel = getLevel(save.exp);
-
-    if (currentLevel < requiredLevel)
-      return toast(`${t("levelInsufficient")} ${requiredLevel}${t("currentLevel")} ${currentLevel} ${t("levelText")}`);
-    if (save.coins < cost) return toast(`${t("insufficientCoins")}，需要 ${cost} ${t("coins")}`);
-
-    setSave((s: GameSave) => ({
-      ...s,
-      coins: s.coins - cost,
-      plots: replacePlot(s.plots, { ...plot, unlocked: true }),
-    }));
-    toast(`${t("plotUnlockedSuccess")}${plot.id + 1}，${t("unlockCost")} ${cost} ${t("coins")}`);
-  }
-
-  // 重置（恢复到默认配置）
-  function resetSave() {
-    if (!confirm(t("resetConfirm"))) return;
-    const resetData = createDefaultSave();
-    localStorage.setItem("social-farm-save-v1", JSON.stringify(resetData));
-    setSave(resetData);
+    // TODO: 调用后端API重置用户数据
+    // 暂时只重置前端状态
     toast(t("resetSuccess"));
+    window.location.reload();
+  }
+
+  // 购买种子（只能用金币，无等级限制）
+  async function buySeed(id: string, count = 1) {
+    if (!isConnected || !address) return toast("Please connect wallet first");
+
+    try {
+      const newState = await gameAction.execute("buySeed", {
+        seedId: id,
+        count: count,
+      });
+
+      setSave(prev => ({
+        ...prev,
+        ...newState,
+      }));
+
+      const seed = SEEDS[id as keyof typeof SEEDS];
+      toast(`${t("bought")} ${seed.name} ×${count}`);
+    } catch (error) {
+      console.error("Buy seed failed:", error);
+    }
+  }
+
+  // 购买肥料（只能用金币）
+  async function buyFertilizer(count = 1) {
+    if (!isConnected || !address) return toast("Please connect wallet first");
+
+    try {
+      const newState = await gameAction.execute("buyFertilizer", {
+        count: count,
+      });
+
+      setSave(prev => ({
+        ...prev,
+        ...newState,
+      }));
+
+      toast(`${t("bought")} ${t("fertilizer")} ×${count}`);
+    } catch (error) {
+      console.error("Buy fertilizer failed:", error);
+    }
+  }
+
+  // 购买宠物
+  async function buyPet(petId: string) {
+    if (!isConnected || !address) return toast("Please connect wallet first");
+
+    try {
+      const newState = await gameAction.execute("buyPet", {
+        petId: petId,
+      });
+
+      setSave(prev => ({
+        ...prev,
+        ...newState,
+      }));
+
+      const pet = PETS.find((p: any) => p.id === petId);
+      toast(`${t("bought")} ${pet?.name}！`);
+    } catch (error) {
+      console.error("Buy pet failed:", error);
+    }
   }
 
   // 每日签到
-  function performCheckin() {
-    if (hasCheckedInToday(save.checkinLastDate)) {
-      return toast(t("checkinAlready"));
+  async function performCheckin() {
+    if (!isConnected || !address) return toast("Please connect wallet first");
+
+    try {
+      const newState = await gameAction.execute("checkin", {});
+
+      setSave(prev => ({
+        ...prev,
+        ...newState,
+      }));
+
+      toast(t("checkinSuccess"));
+    } catch (error) {
+      console.error("Checkin failed:", error);
     }
-    const coins = dailyCheckin();
-    const today = getTodayDateStr();
-    const yearMonth = getYearMonthStr();
-    const day = new Date().getDate();
+  }
 
-    setSave((s: GameSave) => {
-      const nextRecords = { ...(s.checkinRecords || {}) };
-      if (!nextRecords[yearMonth]) nextRecords[yearMonth] = [];
-      nextRecords[yearMonth] = [...nextRecords[yearMonth], day];
+  // 处理机器人订阅
+  async function handleRobotSubscribe(name: string, email: string, acceptMarketing: boolean) {
+    if (!isConnected || !address) return toast("Please connect wallet first");
 
-      return {
-        ...s,
-        coins: s.coins + coins,
-        checkinLastDate: today,
-        checkinRecords: nextRecords,
-      };
-    });
+    try {
+      const newState = await gameAction.execute("subscribeRobot", {
+        name,
+        email,
+        acceptMarketing,
+      });
 
-    toast(`${t("checkinSuccess")} ${coins} ${t("coins")}！`);
+      setSave(prev => ({
+        ...prev,
+        ...newState,
+      }));
+
+      setRobotOpen(false);
+      toast(t("subscribeSuccess"));
+    } catch (error) {
+      console.error("Subscribe failed:", error);
+    }
   }
 
   // 弹窗：商店 / 银行 / Gluck / 签到 / 集字 / 机器人 / 宠物
@@ -662,15 +614,6 @@ function SocialFarmGame() {
   const [letterCollectionOpen, setLetterCollectionOpen] = useState(false);
   const [robotOpen, setRobotOpen] = useState(false);
   const [petOpen, setPetOpen] = useState(false);
-
-  // 处理机器人订阅
-  function handleRobotSubscribe(name: string, email: string, acceptMarketing: boolean) {
-    // 实际项目中这里应该调用后端API
-    console.log("Subscribe:", { name, email, acceptMarketing });
-    setSave((s: GameSave) => ({ ...s, robotSubscribed: true }));
-    setRobotOpen(false);
-    toast(t("subscribeSuccess"));
-  }
 
   /**********************
    * 渲染                *
@@ -732,7 +675,7 @@ function SocialFarmGame() {
             </div>
             <div className="md:col-span-3">
               <Toolbox
-                current={save.tool}
+                current={save.tool as ToolType}
                 setTool={setTool}
                 fertilizer={save.fertilizer || 0}
                 robotSubscribed={save.robotSubscribed || false}
@@ -788,21 +731,25 @@ function SocialFarmGame() {
           onClose={() => setShopOpen(false)}
           buySeed={buySeed}
           buyFertilizer={buyFertilizer}
-          sellFruit={(id: string, count: number) => {
-            const seed = SEEDS[id];
-            if (!seed) return toast(t("unknownCrop"));
-            const fruits = save.fruits || {};
-            const available = fruits[id] || 0;
-            if (available < count) return toast(t("insufficientFruits"));
+          sellFruit={async (id: string, count: number) => {
+            if (!isConnected || !address) return toast("Please connect wallet first");
 
-            // 商店只能卖成金币
-            const income = seed.sell * count;
-            setSave((s: GameSave) => ({
-              ...s,
-              coins: s.coins + income,
-              fruits: { ...s.fruits, [id]: (s.fruits[id] || 0) - count },
-            }));
-            toast(`${t("sold")} ${seed.name} ×${count}，${t("obtained")} ${income} ${t("coins")}`);
+            try {
+              const newState = await gameAction.execute("sellFruit", {
+                fruitId: id,
+                count: count,
+              });
+
+              setSave(prev => ({
+                ...prev,
+                ...newState,
+              }));
+
+              const seed = SEEDS[id as keyof typeof SEEDS];
+              toast(`${t("sold")} ${seed.name} ×${count}`);
+            } catch (error) {
+              console.error("Sell fruit failed:", error);
+            }
           }}
           fruits={save.fruits || {}}
           language={lang}
@@ -811,28 +758,48 @@ function SocialFarmGame() {
           open={bankOpen}
           onClose={() => setBankOpen(false)}
           coins={save.coins}
-          onExchange={(amount: number, targetCurrency: CurrencyType) => {
-            if (save.coins < amount) return toast(t("insufficientCoins"));
-            const exchangeRate = targetCurrency === "zeta" ? ZETA_EXCHANGE_RATE : TICKET_EXCHANGE_RATE;
-            const exchangeAmount = Math.floor(amount / exchangeRate);
-            const minAmount = targetCurrency === "zeta" ? ZETA_EXCHANGE_RATE : TICKET_EXCHANGE_RATE;
-            if (exchangeAmount < 1) return toast(`${t("exchangeFailed")}${minAmount}${t("coins")}`);
+          onExchange={async (amount: number, targetCurrency: CurrencyType) => {
+            if (!isConnected || !address) return toast("Please connect wallet first");
 
-            setSave((s: GameSave) => ({
-              ...s,
-              coins: s.coins - amount,
-              [targetCurrency]: (s[targetCurrency] || 0) + exchangeAmount,
-            }));
+            try {
+              const newState = await gameAction.execute("exchange", {
+                amount: amount,
+                targetCurrency: targetCurrency,
+              });
 
-            const currencyName = targetCurrency === "zeta" ? "ZETA" : currentLanguage === "ko" ? "티켓" : "奖券";
-            toast(`${t("exchangeSuccess")}${amount} ${t("coins")} → ${exchangeAmount} ${currencyName}`);
+              setSave(prev => ({
+                ...prev,
+                ...newState,
+              }));
+
+              toast(t("exchangeSuccess"));
+            } catch (error) {
+              console.error("Exchange failed:", error);
+            }
           }}
           language={lang}
         />
         <GluckModal
           open={gluckOpen}
           onClose={() => setGluckOpen(false)}
-          onDraw={(n: number) => doGluck(n)}
+          onDraw={async (n: number) => {
+            if (!isConnected || !address) return toast("Please connect wallet first");
+
+            try {
+              const newState = await gameAction.execute("draw", {
+                count: n,
+              });
+
+              setSave(prev => ({
+                ...prev,
+                ...newState,
+              }));
+
+              toast(t("drew"));
+            } catch (error) {
+              console.error("Draw failed:", error);
+            }
+          }}
           tickets={save.tickets}
           language={lang}
         />
@@ -849,16 +816,23 @@ function SocialFarmGame() {
           onClose={() => setLetterCollectionOpen(false)}
           collectedLetters={save.collectedLetters || {}}
           redeemedRewards={save.redeemedRewards || []}
-          onRedeem={(rewardId: string) => {
-            if (save.redeemedRewards.includes(rewardId)) {
-              toast(t("alreadyRedeemed"));
-              return;
+          onRedeem={async (rewardId: string) => {
+            if (!isConnected || !address) return toast("Please connect wallet first");
+
+            try {
+              const newState = await gameAction.execute("redeemReward", {
+                rewardId: rewardId,
+              });
+
+              setSave(prev => ({
+                ...prev,
+                ...newState,
+              }));
+
+              toast(t("redeemSuccess"));
+            } catch (error) {
+              console.error("Redeem failed:", error);
             }
-            setSave((s: GameSave) => ({
-              ...s,
-              redeemedRewards: [...(s.redeemedRewards || []), rewardId],
-            }));
-            toast(t("redeemSuccess"));
           }}
           language={lang}
         />
@@ -886,61 +860,6 @@ function SocialFarmGame() {
       </div>
     </div>
   );
-
-  // ====== Gluck 逻辑 ======
-  function doGluck(count = 1) {
-    const cost = count; // 每抽 1 张奖券
-    if (save.tickets < cost) return toast(t("ticketInsufficient"));
-
-    interface GluckReward {
-      type: string;
-      id: string;
-      qty: number;
-    }
-
-    const rewards: GluckReward[] = [];
-    for (let i = 0; i < count; i++) {
-      const r = Math.random();
-
-      // 根据随机数选择种子池
-      let selectedPool = null;
-      for (const pool of GLUCK_SEED_POOLS) {
-        if (r <= pool.prob) {
-          selectedPool = pool;
-          break;
-        }
-      }
-
-      if (selectedPool) {
-        // 从该池中随机选择一个种子
-        const seedId = selectedPool.seeds[Math.floor(Math.random() * selectedPool.seeds.length)];
-        // 随机数量
-        const qty = selectedPool.minQty + Math.floor(Math.random() * (selectedPool.maxQty - selectedPool.minQty + 1));
-        rewards.push({ type: "seed", id: seedId, qty });
-      }
-    }
-
-    // 应用奖励
-    setSave((s: GameSave) => {
-      const next = { ...s, tickets: s.tickets - cost, inventory: { ...(s.inventory || {}) } };
-      const seedGains: string[] = [];
-      rewards.forEach((rw: GluckReward) => {
-        if (rw.type === "seed") {
-          next.inventory[rw.id] = (next.inventory[rw.id] || 0) + rw.qty;
-          seedGains.push(`${SEEDS[rw.id].emoji} ${SEEDS[rw.id].name}×${rw.qty}`);
-        }
-      });
-
-      // 汇总提示
-      if (seedGains.length > 0) {
-        const separator = currentLanguage === "en" ? ", " : currentLanguage === "ko" ? ", " : "、";
-        toast(`${t("drew")}${seedGains.join(separator)}`);
-      } else {
-        toast(t("nextTimeLuck"));
-      }
-      return next;
-    });
-  }
 }
 
 /**********************

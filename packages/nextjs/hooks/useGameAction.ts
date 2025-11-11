@@ -53,7 +53,7 @@ export function useGameAction(options?: GameActionOptions) {
       );
 
       // 4. 等待交易确认
-      options?.showToast?.("Transaction submitted, waiting for confirmation...");
+      options?.showToast?.("Transaction confirmed! Processing...");
       console.log("Transaction hash:", txHash);
 
       // 等待几秒让后端处理事件
@@ -63,9 +63,9 @@ export function useGameAction(options?: GameActionOptions) {
       options?.showToast?.("Refreshing game state...");
       const newState = await getUserState(address);
 
-      // 6. 成功回调
+      // 6. 成功回调 - 让调用方更新界面状态
       options?.onSuccess?.(newState);
-      options?.showToast?.("Action completed successfully!");
+      options?.showToast?.("✅ Action completed!");
 
       return newState;
     } catch (err) {

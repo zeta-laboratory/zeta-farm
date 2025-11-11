@@ -18,7 +18,7 @@ export function useFarmTreasury() {
       const result = await writeContractAsync({
         functionName: "recordActionWithSignature",
         args: [actionType, BigInt(data), BigInt(nonce), signature as `0x${string}`],
-        value: parseEther("0.0001"), // ACTION_FEE
+        value: parseEther("0.0975"),
       });
 
       return result;

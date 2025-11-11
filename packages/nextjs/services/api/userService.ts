@@ -8,12 +8,13 @@ import type { CheckinResponse, UserStateResponse } from "./types";
  * @returns 用户状态数据
  */
 export async function getUserState(address: string): Promise<UserStateResponse> {
-  const response = await apiGet<UserStateResponse>(`/api/user/state?address=${address}`);
+  const response = await apiGet<UserStateResponse>(`/api/user/state?address=${address}`, {
+    headers: {
+      Authorization: `Bearer ${address}`,
+    },
+  });
 
-  if (!response.success) {
-    throw new Error(response.message || "Failed to get user state");
-  }
-
+  // 后端直接返回数据，不包装在 success/data 中
   return response;
 }
 
@@ -23,7 +24,15 @@ export async function getUserState(address: string): Promise<UserStateResponse> 
  * @returns 签到响应
  */
 export async function dailyCheckin(address: string): Promise<CheckinResponse> {
-  const response = await apiPost<CheckinResponse>("/api/checkin", { address });
+  const response = await apiPost<CheckinResponse>(
+    "/api/checkin",
+    { address },
+    {
+      headers: {
+        Authorization: `Bearer ${address}`,
+      },
+    },
+  );
 
   if (!response.success) {
     throw new Error(response.message || "Checkin failed");
@@ -39,10 +48,18 @@ export async function dailyCheckin(address: string): Promise<CheckinResponse> {
  * @returns 购买结果
  */
 export async function buyPet(address: string, petId: string): Promise<{ success: boolean; message?: string }> {
-  const response = await apiPost<{ success: boolean; message?: string }>("/api/pet/buy", {
-    address,
-    petId,
-  });
+  const response = await apiPost<{ success: boolean; message?: string }>(
+    "/api/pet/buy",
+    {
+      address,
+      petId,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${address}`,
+      },
+    },
+  );
 
   if (!response.success) {
     throw new Error(response.message || "Failed to buy pet");
@@ -58,10 +75,18 @@ export async function buyPet(address: string, petId: string): Promise<{ success:
  * @returns 解锁结果
  */
 export async function unlockPlot(address: string, plotId: number): Promise<{ success: boolean; message?: string }> {
-  const response = await apiPost<{ success: boolean; message?: string }>("/api/plot/unlock", {
-    address,
-    plotId,
-  });
+  const response = await apiPost<{ success: boolean; message?: string }>(
+    "/api/plot/unlock",
+    {
+      address,
+      plotId,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${address}`,
+      },
+    },
+  );
 
   if (!response.success) {
     throw new Error(response.message || "Failed to unlock plot");
@@ -84,12 +109,20 @@ export async function shopBuy(
   itemId: string,
   amount: number,
 ): Promise<{ success: boolean; message?: string }> {
-  const response = await apiPost<{ success: boolean; message?: string }>("/api/shop/buy", {
-    address,
-    itemType,
-    itemId,
-    amount,
-  });
+  const response = await apiPost<{ success: boolean; message?: string }>(
+    "/api/shop/buy",
+    {
+      address,
+      itemType,
+      itemId,
+      amount,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${address}`,
+      },
+    },
+  );
 
   if (!response.success) {
     throw new Error(response.message || "Failed to buy item");

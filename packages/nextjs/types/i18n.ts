@@ -101,8 +101,11 @@ export interface TranslationTexts {
   harvested: string;
   expGained: string;
   sellAtShopFor: string;
+  planted: string;
   watered: string;
   weeded: string;
+  pestsRemoved: string;
+  removed: string;
   noWeeds: string;
   noPests: string;
   plotUnlocked: string;
