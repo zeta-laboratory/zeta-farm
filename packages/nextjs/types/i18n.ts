@@ -143,6 +143,7 @@ export interface TranslationTexts {
   wordComplete: string;
   redeemSuccess: string;
   alreadyRedeemed: string;
+  equivalentValue: string;
   // Fertilizer
   fertilizer: string;
   plotNotUnlocked: string;

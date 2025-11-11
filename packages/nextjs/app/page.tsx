@@ -7,6 +7,17 @@ import { AutumnBackground } from "~~/components/Layout/AutumnBackground";
 import { Banner } from "~~/components/Layout/Banner";
 // 导入布局组件
 import { TopBar } from "~~/components/Layout/TopBar";
+// 导入模态框组件
+import {
+  BankModal,
+  CheckinModal,
+  GluckModal,
+  LetterCollectionModal,
+  PetModal,
+  RobotModal,
+  SettingsPanel,
+  ShopModal,
+} from "~~/components/Modals";
 // 导入常量配置
 import {
   FERTILIZER_COST,
@@ -20,20 +31,19 @@ import {
 } from "~~/constants/game";
 import { I18N } from "~~/constants/i18n";
 import { PETS } from "~~/constants/pets";
-import { GLUCK_SEED_POOLS, LETTER_COLLECTION_PHRASES, REWARDS_LIST } from "~~/constants/rewards";
+import { GLUCK_SEED_POOLS } from "~~/constants/rewards";
 import { SEEDS } from "~~/constants/seeds";
 // 导入类型定义
-import type { CurrencyType, GameSave, Language, Plot, ShopTab, ToolType } from "~~/types";
+import type { CurrencyType, GameSave, Language, Plot, ToolType } from "~~/types";
 // 导入游戏工具函数
 import {
   // 作物阶段相关
   STAGE, // 通用工具
-  clamp, // 存档相关
+  // 存档相关
   createDefaultSave, // UI 相关
   cursorForTool, // 签到相关
   dailyCheckin,
-  fmtTime,
-  getAllDaysInMonth, // 字母收集相关
+  fmtTime, // 字母收集相关
   getAllRequiredLetters, // 等级相关
   getLevel, // 地块相关
   getPlotUnlockCost,
@@ -769,7 +779,7 @@ function SocialFarmGame() {
                   {t("letterCollection")}
                 </button>
               </div>
-              <SettingsPanel onReset={resetSave} />
+              <SettingsPanel onReset={resetSave} language={lang} />
             </div>
           </div>
         </div>
@@ -795,6 +805,7 @@ function SocialFarmGame() {
             toast(`${t("sold")} ${seed.name} ×${count}，${t("obtained")} ${income} ${t("coins")}`);
           }}
           fruits={save.fruits || {}}
+          language={lang}
         />
         <BankModal
           open={bankOpen}
@@ -816,12 +827,14 @@ function SocialFarmGame() {
             const currencyName = targetCurrency === "zeta" ? "ZETA" : currentLanguage === "ko" ? "티켓" : "奖券";
             toast(`${t("exchangeSuccess")}${amount} ${t("coins")} → ${exchangeAmount} ${currencyName}`);
           }}
+          language={lang}
         />
         <GluckModal
           open={gluckOpen}
           onClose={() => setGluckOpen(false)}
           onDraw={(n: number) => doGluck(n)}
           tickets={save.tickets}
+          language={lang}
         />
         <CheckinModal
           open={checkinOpen}
@@ -829,6 +842,7 @@ function SocialFarmGame() {
           onCheckin={performCheckin}
           checkinLastDate={save.checkinLastDate}
           checkinRecords={save.checkinRecords || {}}
+          language={lang}
         />
         <LetterCollectionModal
           open={letterCollectionOpen}
@@ -846,6 +860,7 @@ function SocialFarmGame() {
             }));
             toast(t("redeemSuccess"));
           }}
+          language={lang}
         />
         <RobotModal
           open={robotOpen || save.tool === "robot"}
@@ -855,6 +870,7 @@ function SocialFarmGame() {
           }}
           onSubscribe={handleRobotSubscribe}
           subscribed={save.robotSubscribed || false}
+          language={lang}
         />
         <PetModal
           open={petOpen || save.tool === "pet"}
@@ -864,6 +880,7 @@ function SocialFarmGame() {
           }}
           pets={save.pets || {}}
           onBuyPet={buyPet}
+          language={lang}
         />
         <ToastArea />
       </div>
@@ -963,63 +980,6 @@ interface BagPanelProps {
   fruits: Record<string, number>;
   selected: string | null;
   onSelect: (id: string) => void;
-}
-
-interface ShopModalProps {
-  open: boolean;
-  onClose: () => void;
-  buySeed: (id: string, count: number) => void;
-  buyFertilizer: (count: number) => void;
-  sellFruit: (id: string, count: number) => void;
-  fruits: Record<string, number>;
-}
-
-interface BankModalProps {
-  open: boolean;
-  onClose: () => void;
-  coins: number;
-  onExchange: (amount: number, targetCurrency: CurrencyType) => void;
-}
-
-interface GluckModalProps {
-  open: boolean;
-  onClose: () => void;
-  onDraw: (count: number) => void;
-  tickets: number;
-}
-
-interface CheckinModalProps {
-  open: boolean;
-  onClose: () => void;
-  onCheckin: () => void;
-  checkinLastDate: string;
-  checkinRecords: Record<string, number[]>;
-}
-
-interface LetterCollectionModalProps {
-  open: boolean;
-  onClose: () => void;
-  collectedLetters: Record<string, number>;
-  redeemedRewards: string[];
-  onRedeem: (rewardId: string) => void;
-}
-
-interface SettingsPanelProps {
-  onReset: () => void;
-}
-
-interface RobotModalProps {
-  open: boolean;
-  onClose: () => void;
-  onSubscribe: (name: string, email: string, acceptMarketing: boolean) => void;
-  subscribed: boolean;
-}
-
-interface PetModalProps {
-  open: boolean;
-  onClose: () => void;
-  pets: Record<string, boolean>;
-  onBuyPet: (petId: string) => void;
 }
 
 /**********************
@@ -1310,790 +1270,12 @@ function BagPanel({ inventory, fruits, selected, onSelect }: BagPanelProps) {
   );
 }
 
-function ShopModal({ open, onClose, buySeed, buyFertilizer, sellFruit, fruits }: ShopModalProps) {
-  const [tab, setTab] = useState<ShopTab>("buy"); // 'buy', 'buyFertilizer' or 'sell'
-  const [seedId, setSeedId] = useState("radish");
-  const [qty, setQty] = useState(1);
-  const entries = Object.values(SEEDS);
-  if (!open) return null;
-  const seed = SEEDS[seedId];
-  const fruitEntries = entries.filter(s => (fruits[s.id] || 0) > 0);
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white w-[min(640px,95vw)] rounded-2xl border shadow-lg p-4">
-        <div className="flex items-center justify-between mb-2">
-          <div className="font-semibold text-lg">{t("shop")}</div>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-700">
-            ✖
-          </button>
-        </div>
-        {/* 标签页切换 */}
-        <div className="flex gap-2 mb-3 border-b">
-          <button
-            onClick={() => {
-              setTab("buy");
-              setSeedId("radish");
-            }}
-            className={`px-3 py-1 text-sm ${tab === "buy" ? "border-b-2 border-emerald-400 text-emerald-600" : "text-slate-500"}`}
-          >
-            {t("buySeeds")}
-          </button>
-          <button
-            onClick={() => {
-              setTab("buyFertilizer");
-            }}
-            className={`px-3 py-1 text-sm ${tab === "buyFertilizer" ? "border-b-2 border-emerald-400 text-emerald-600" : "text-slate-500"}`}
-          >
-            {t("fertilizer")}
-          </button>
-          <button
-            onClick={() => {
-              setTab("sell");
-              if (fruitEntries.length > 0) setSeedId(fruitEntries[0].id);
-            }}
-            className={`px-3 py-1 text-sm ${tab === "sell" ? "border-b-2 border-emerald-400 text-emerald-600" : "text-slate-500"}`}
-          >
-            {t("sellFruits")}
-          </button>
-        </div>
-
-        {tab === "buyFertilizer" ? (
-          <div>
-            <div className="text-base font-medium mb-2">{t("fertilizer")} 🌾</div>
-            <div className="text-sm text-slate-600 mb-2">使用肥料可以加速作物生长，根据作物稀有程度效果不同</div>
-            <div className="flex items-center gap-2 mb-4">
-              <input
-                type="number"
-                min={1}
-                value={qty}
-                onChange={e => setQty(clamp(parseInt(e.target.value || "1", 10), 1, 999))}
-                className="w-20 px-2 py-1 border rounded-lg"
-              />
-              <div className="text-sm text-slate-600">{t("quantity")}</div>
-              <div className="text-sm text-slate-600">
-                {t("totalPrice")}：{FERTILIZER_COST * qty} {t("coins")}
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => buyFertilizer(qty)}
-                className="px-3 py-1.5 rounded-lg border bg-white hover:bg-slate-50"
-              >
-                {t("buy")}
-              </button>
-              <button onClick={onClose} className="px-3 py-1.5 rounded-lg border bg-white hover:bg-slate-50">
-                {t("close")}
-              </button>
-            </div>
-          </div>
-        ) : tab === "buy" ? (
-          <div className="grid grid-cols-5 gap-2">
-            <div className="col-span-3">
-              <div className="grid grid-cols-5 gap-2 max-h-72 overflow-auto pr-1">
-                {entries.map(s => (
-                  <button
-                    key={s.id}
-                    onClick={() => setSeedId(s.id)}
-                    className={`aspect-square rounded-xl border flex items-center justify-center text-2xl ${seedId === s.id ? "border-emerald-400 bg-emerald-50" : "bg-white hover:bg-slate-50"}`}
-                    title={s.name}
-                  >
-                    {s.emoji}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="col-span-2">
-              <div className="text-base font-medium mb-1">
-                {seed.name} <span className="text-xs text-slate-400">Lv{seed.levelReq}</span>
-              </div>
-              <div className="text-sm text-slate-600">
-                {t("cost")} {seed.cost} {t("coins")}｜{t("sell")} {seed.sell} {t("coins")}｜{t("exp")} +{seed.exp}
-              </div>
-              <div className="text-[11px] text-slate-500 mb-2">
-                {t("mature")} {fmtTime(seed.stages[2])}，{t("witherAfter")} {fmtTime(seed.witherAfter)} {t("after")}
-              </div>
-              <div className="text-sm mb-2 text-slate-700">{t("buyWith")}</div>
-              <div className="flex items-center gap-2 mb-2">
-                <input
-                  type="number"
-                  min={1}
-                  value={qty}
-                  onChange={e => setQty(clamp(parseInt(e.target.value || "1", 10), 1, 999))}
-                  className="w-20 px-2 py-1 border rounded-lg"
-                />
-                <div className="text-sm text-slate-600">{t("quantity")}</div>
-                <div className="text-sm text-slate-600">
-                  {t("totalPrice")}：{seed.cost * qty} {t("coins")}
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => buySeed(seedId, qty)}
-                  className="px-3 py-1.5 rounded-lg border bg-white hover:bg-slate-50"
-                >
-                  {t("buy")}
-                </button>
-                <button onClick={onClose} className="px-3 py-1.5 rounded-lg border bg-white hover:bg-slate-50">
-                  {t("close")}
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-5 gap-2">
-            <div className="col-span-3">
-              {fruitEntries.length > 0 ? (
-                <div className="grid grid-cols-5 gap-2 max-h-72 overflow-auto pr-1">
-                  {fruitEntries.map(s => (
-                    <button
-                      key={s.id}
-                      onClick={() => setSeedId(s.id)}
-                      className={`aspect-square rounded-xl border flex items-center justify-center text-2xl relative ${seedId === s.id ? "border-emerald-400 bg-emerald-50" : "bg-white hover:bg-slate-50"}`}
-                      title={s.name}
-                    >
-                      {s.emoji}
-                      <span className="absolute -top-1 -right-1 text-[10px] px-1 rounded bg-emerald-600 text-white">
-                        {fruits[s.id] || 0}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-slate-400">{t("noFruitsToSell")}</div>
-              )}
-            </div>
-            <div className="col-span-2">
-              {fruitEntries.length > 0 && seed ? (
-                <>
-                  <div className="text-base font-medium mb-1">{seed.name}</div>
-                  <div className="text-sm text-slate-600 mb-2">
-                    {t("unitPrice")} {seed.sell} {t("coins")}
-                  </div>
-                  <div className="text-sm text-slate-500 mb-2">
-                    {t("holding")}：{fruits[seed.id] || 0}
-                  </div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <input
-                      type="number"
-                      min={1}
-                      max={fruits[seed.id] || 0}
-                      value={qty}
-                      onChange={e => setQty(clamp(parseInt(e.target.value || "1", 10), 1, fruits[seed.id] || 0))}
-                      className="w-20 px-2 py-1 border rounded-lg"
-                    />
-                    <div className="text-sm text-slate-600">{t("quantity")}</div>
-                  </div>
-                  <div className="text-sm text-slate-700 mb-2">
-                    {t("total")}：{seed.sell * qty} {t("coins")}
-                  </div>
-                  <div className="text-[11px] text-slate-500 mb-2">{t("sellToShop")}</div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        sellFruit(seedId, qty);
-                        setQty(1);
-                      }}
-                      className="px-3 py-1.5 rounded-lg border bg-white hover:bg-slate-50"
-                    >
-                      {t("sellAction")}
-                    </button>
-                    <button onClick={onClose} className="px-3 py-1.5 rounded-lg border bg-white hover:bg-slate-50">
-                      {t("close")}
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div className="text-sm text-slate-400">{t("selectFruit")}</div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function BankModal({ open, onClose, coins, onExchange }: BankModalProps) {
-  const [amount, setAmount] = useState(ZETA_EXCHANGE_RATE);
-  const [targetCurrency, setTargetCurrency] = useState<CurrencyType>("zeta");
-  if (!open) return null;
-
-  // 使用导入的汇率常量
-  const exchangeRate = targetCurrency === "zeta" ? ZETA_EXCHANGE_RATE : TICKET_EXCHANGE_RATE;
-  const minAmount = targetCurrency === "zeta" ? ZETA_EXCHANGE_RATE : TICKET_EXCHANGE_RATE;
-  // 确保金额不小于最小金额
-  const validAmount = Math.max(amount, minAmount);
-  const exchangeAmount = Math.floor(validAmount / exchangeRate);
-
-  // 当切换货币时，调整金额
-  const handleCurrencyChange = (currency: CurrencyType) => {
-    setTargetCurrency(currency);
-    const newMin = currency === "zeta" ? 10 : 70;
-    if (amount < newMin) {
-      setAmount(newMin);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white w-[min(480px,95vw)] rounded-2xl border shadow-lg p-4">
-        <div className="flex items-center justify-between mb-2">
-          <div className="font-semibold text-lg">{t("bank")}</div>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-700">
-            ✖
-          </button>
-        </div>
-        <div className="text-sm text-slate-600 mb-3">
-          {t("currentCoins")}：<b>{coins}</b>
-        </div>
-        <div className="mb-3">
-          <div className="text-sm text-slate-700 mb-2">{t("exchangeTarget")}：</div>
-          <div className="flex gap-2 mb-2">
-            <button
-              onClick={() => handleCurrencyChange("zeta")}
-              className={`px-3 py-2 rounded-lg border flex-1 ${targetCurrency === "zeta" ? "bg-emerald-100 border-emerald-300" : "bg-white hover:bg-slate-50"}`}
-            >
-              Ζ ZETA
-            </button>
-            <button
-              onClick={() => handleCurrencyChange("tickets")}
-              className={`px-3 py-2 rounded-lg border flex-1 ${targetCurrency === "tickets" ? "bg-emerald-100 border-emerald-300" : "bg-white hover:bg-slate-50"}`}
-            >
-              🎟️ {currentLanguage === "ko" ? "티켓" : currentLanguage === "en" ? "Tickets" : "奖券"}
-            </button>
-          </div>
-        </div>
-        <div className="mb-3">
-          <div className="text-sm text-slate-700 mb-2">{t("exchangeAmount")}：</div>
-          <div className="flex items-center gap-2 mb-2">
-            <input
-              type="number"
-              min={minAmount}
-              max={coins}
-              step={targetCurrency === "zeta" ? 10 : 70}
-              value={validAmount}
-              onChange={e => setAmount(clamp(parseInt(e.target.value || String(minAmount), 10), minAmount, coins))}
-              className="flex-1 px-3 py-2 border rounded-lg"
-            />
-          </div>
-          <div className="flex gap-2 mb-2">
-            {targetCurrency === "zeta" ? (
-              <>
-                <button
-                  onClick={() => setAmount(10)}
-                  className="px-2 py-1 text-xs rounded border bg-white hover:bg-slate-50"
-                >
-                  10
-                </button>
-                <button
-                  onClick={() => setAmount(100)}
-                  className="px-2 py-1 text-xs rounded border bg-white hover:bg-slate-50"
-                >
-                  100
-                </button>
-                <button
-                  onClick={() => setAmount(1000)}
-                  className="px-2 py-1 text-xs rounded border bg-white hover:bg-slate-50"
-                >
-                  1000
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={() => setAmount(70)}
-                  className="px-2 py-1 text-xs rounded border bg-white hover:bg-slate-50"
-                >
-                  70
-                </button>
-                <button
-                  onClick={() => setAmount(350)}
-                  className="px-2 py-1 text-xs rounded border bg-white hover:bg-slate-50"
-                >
-                  350
-                </button>
-                <button
-                  onClick={() => setAmount(700)}
-                  className="px-2 py-1 text-xs rounded border bg-white hover:bg-slate-50"
-                >
-                  700
-                </button>
-              </>
-            )}
-            <button
-              onClick={() => setAmount(coins)}
-              className="px-2 py-1 text-xs rounded border bg-white hover:bg-slate-50"
-            >
-              {currentLanguage === "en" ? "All" : currentLanguage === "ko" ? "전체" : "全部"}
-            </button>
-          </div>
-        </div>
-        <div className="text-sm text-slate-700 mb-3 p-3 bg-slate-50 rounded-lg">
-          <div>
-            {exchangeRate} {t("coins")} {t("exchangeRate")}{" "}
-            {targetCurrency === "zeta"
-              ? "ZETA"
-              : currentLanguage === "ko"
-                ? "티켓"
-                : currentLanguage === "en"
-                  ? "Ticket"
-                  : "奖券"}
-          </div>
-          <div className="font-semibold mt-1">
-            {validAmount} {t("coins")} → {exchangeAmount}{" "}
-            {targetCurrency === "zeta"
-              ? "ZETA"
-              : currentLanguage === "ko"
-                ? "티켓"
-                : currentLanguage === "en"
-                  ? "Tickets"
-                  : "奖券"}
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => {
-              if (coins < validAmount) {
-                toast(t("insufficientCoins"));
-                return;
-              }
-              if (exchangeAmount < 1) {
-                toast(`${t("exchangeFailed")}${minAmount}${t("coins")}`);
-                return;
-              }
-              onExchange(validAmount, targetCurrency);
-              setAmount(minAmount);
-            }}
-            className="flex-1 px-3 py-1.5 rounded-lg border bg-white hover:bg-slate-50"
-            disabled={coins < validAmount || exchangeAmount < 1}
-          >
-            {currentLanguage === "en" ? "Exchange" : currentLanguage === "ko" ? "교환" : "兑换"}
-          </button>
-          <button onClick={onClose} className="px-3 py-1.5 rounded-lg border bg-white hover:bg-slate-50">
-            {t("close")}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function GluckModal({ open, onClose, onDraw, tickets }: GluckModalProps) {
-  const [count, setCount] = useState(1);
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white w-[min(560px,95vw)] rounded-2xl border shadow-lg p-4">
-        <div className="flex items-center justify-between mb-2">
-          <div className="font-semibold text-lg">{t("gluck")}</div>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-700">
-            ✖
-          </button>
-        </div>
-        <div
-          className="text-sm text-slate-600 mb-3"
-          dangerouslySetInnerHTML={{ __html: t("gluckDesc") + "：<b>" + tickets + "</b>" }}
-        />
-        <div className="flex items-center gap-2 mb-3">
-          <button
-            onClick={() => setCount(1)}
-            className={`px-3 py-1 rounded-lg border ${count === 1 ? "bg-emerald-100 border-emerald-300" : "bg-white hover:bg-slate-50"}`}
-          >
-            {t("singleDraw")}
-          </button>
-          <button
-            onClick={() => setCount(10)}
-            className={`px-3 py-1 rounded-lg border ${count === 10 ? "bg-emerald-100 border-emerald-300" : "bg-white hover:bg-slate-50"}`}
-          >
-            {t("tenDraw")}
-          </button>
-          <input
-            type="number"
-            min={1}
-            value={count}
-            onChange={e => setCount(clamp(parseInt(e.target.value || "1", 10), 1, 999))}
-            className="w-24 px-2 py-1 border rounded-lg"
-          />
-        </div>
-        <div className="flex gap-2">
-          <button onClick={() => onDraw(count)} className="px-3 py-1.5 rounded-lg border bg-white hover:bg-slate-50">
-            {t("startDraw")}
-          </button>
-          <button onClick={onClose} className="px-3 py-1.5 rounded-lg border bg-white hover:bg-slate-50">
-            {t("close")}
-          </button>
-        </div>
-        <div className="text-[11px] text-slate-500 mt-2">
-          <div className="space-y-0.5"></div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function CheckinModal({ open, onClose, onCheckin, checkinLastDate, checkinRecords }: CheckinModalProps) {
-  if (!open) return null;
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = today.getMonth();
-  const firstDayOfWeek = new Date(year, month, 1).getDay();
-  const daysInMonth = getAllDaysInMonth(year, month);
-  const yearMonth = getYearMonthStr();
-  const checkedDays = checkinRecords[yearMonth] || [];
-  const hasCheckedIn = hasCheckedInToday(checkinLastDate);
-
-  let weekdays = ["日", "一", "二", "三", "四", "五", "六"];
-  if (currentLanguage === "en") weekdays = ["S", "M", "T", "W", "T", "F", "S"];
-  if (currentLanguage === "ko") weekdays = ["日", "月", "火", "水", "木", "金", "土"];
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white w-[min(600px,95vw)] rounded-2xl border shadow-lg p-4">
-        <div className="flex items-center justify-between mb-2">
-          <div className="font-semibold text-lg">{t("checkin")}</div>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-700">
-            ✖
-          </button>
-        </div>
-        <div className="text-sm text-slate-600 mb-3">
-          {hasCheckedIn ? (
-            <span className="text-emerald-600">✓ {t("checkinTodayCompleted")}</span>
-          ) : (
-            <span>{t("checkinClickToGet")}</span>
-          )}
-        </div>
-        <div className="mb-4">
-          <div className="font-medium mb-2">
-            {currentLanguage === "en"
-              ? `${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][month]} ${year}`
-              : currentLanguage === "ko"
-                ? `${year}년 ${month + 1}월`
-                : `${year}年${month + 1}月`}
-          </div>
-          <div className="grid grid-cols-7 gap-1">
-            {weekdays.map(day => (
-              <div key={day} className="text-center text-xs text-slate-500 py-1">
-                {day}
-              </div>
-            ))}
-            {Array.from({ length: firstDayOfWeek }).map((_, i) => (
-              <div key={`empty-${i}`} />
-            ))}
-            {Array.from({ length: daysInMonth }).map((_, i) => {
-              const dayNum = i + 1;
-              const isChecked = checkedDays.includes(dayNum);
-              const isToday = dayNum === today.getDate();
-              return (
-                <div
-                  key={dayNum}
-                  className={`aspect-square rounded-lg border flex items-center justify-center text-xs relative ${
-                    isChecked
-                      ? "bg-emerald-100 border-emerald-300 text-emerald-700"
-                      : isToday
-                        ? "bg-amber-100 border-amber-300 text-amber-700"
-                        : "bg-slate-50 border-slate-200 text-slate-600"
-                  }`}
-                >
-                  {dayNum}
-                  {isChecked && <div className="absolute top-0 right-0 text-emerald-600">✓</div>}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => {
-              if (!hasCheckedIn) {
-                onCheckin();
-              }
-            }}
-            disabled={hasCheckedIn}
-            className={`flex-1 px-3 py-1.5 rounded-lg border ${hasCheckedIn ? "bg-slate-100 text-slate-400 cursor-not-allowed" : "bg-emerald-100 hover:bg-emerald-200 text-emerald-700"}`}
-          >
-            {hasCheckedIn ? t("checkinAlready") : t("checkinNow")}
-          </button>
-          <button onClick={onClose} className="px-3 py-1.5 rounded-lg border bg-white hover:bg-slate-50">
-            {t("close")}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function LetterCollectionModal({
-  open,
-  onClose,
-  collectedLetters,
-  redeemedRewards,
-  onRedeem,
-}: LetterCollectionModalProps) {
-  if (!open) return null;
-
-  // 检查每个短语是否完整
-  const checkPhraseComplete = (phrase: string) => {
-    const letters = phrase.split("").filter((c: string) => /[A-Za-z]/.test(c));
-    return letters.every((letter: string) => (collectedLetters[letter.toUpperCase()] || 0) > 0);
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-y-auto">
-      <div className="bg-white w-[min(800px,95vw)] rounded-2xl border shadow-lg p-4 m-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="font-semibold text-lg">{t("letterCollection")}</div>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-700">
-            ✖
-          </button>
-        </div>
-
-        <div className="text-sm text-slate-600 mb-3">{t("collectWordHint")}</div>
-
-        {/* 短语列表 */}
-        <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
-          {LETTER_COLLECTION_PHRASES.map(phrase => {
-            const isComplete = checkPhraseComplete(phrase);
-            const letters = phrase.split("").filter(c => /[A-Za-z]/.test(c));
-            return (
-              <div
-                key={phrase}
-                className={`p-2 rounded-lg border ${isComplete ? "bg-emerald-50 border-emerald-300" : "bg-slate-50 border-slate-200"}`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <div className="font-medium">{phrase}</div>
-                  {isComplete && <span className="text-emerald-600 text-xs">✓ {t("wordComplete")}</span>}
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {letters.map((letter, idx) => {
-                    const count = collectedLetters[letter.toUpperCase()] || 0;
-                    const hasLetter = count > 0;
-                    return (
-                      <div
-                        key={idx}
-                        className={`px-2 py-0.5 rounded border text-xs ${
-                          hasLetter
-                            ? "bg-emerald-100 border-emerald-300 text-emerald-700"
-                            : "bg-white border-slate-300 text-slate-400"
-                        }`}
-                      >
-                        {letter.toUpperCase()} {hasLetter && `×${count}`}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* 奖励列表 */}
-        <div className="border-t pt-3">
-          <div className="font-medium mb-2">{t("collectedWords")}</div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {REWARDS_LIST.map(reward => {
-              const isRedeemed = redeemedRewards.includes(reward.id);
-              return (
-                <div
-                  key={reward.id}
-                  className={`p-3 rounded-lg border ${isRedeemed ? "bg-slate-100 border-slate-300" : "bg-white border-slate-200"}`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl">{reward.emoji}</span>
-                      <div>
-                        <div className="font-medium">{reward.name}</div>
-                        <div className="text-xs text-slate-500">等值 100U</div>
-                      </div>
-                    </div>
-                    {!isRedeemed ? (
-                      <button
-                        onClick={() => onRedeem(reward.id)}
-                        className="px-3 py-1 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-700 text-sm"
-                      >
-                        {t("redeem")}
-                      </button>
-                    ) : (
-                      <span className="text-xs text-slate-500">{t("redeemed")}</span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="flex gap-2 mt-4">
-          <button onClick={onClose} className="flex-1 px-3 py-1.5 rounded-lg border bg-white hover:bg-slate-50">
-            {t("close")}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SettingsPanel({ onReset }: SettingsPanelProps) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="bg-white/90 backdrop-blur rounded-2xl p-3 border shadow-sm mt-3">
-      <div className="flex items-center justify-between">
-        <div className="font-semibold">{t("settings")}</div>
-        <button
-          onClick={() => setOpen(!open)}
-          className="text-xs px-2 py-1 rounded-lg border bg-white hover:bg-slate-50"
-        >
-          {open ? t("collapse") : t("expand")}
-        </button>
-      </div>
-      {open && (
-        <div className="mt-2 space-y-2">
-          <button onClick={onReset} className="text-xs px-2 py-1 rounded-lg border bg-white hover:bg-slate-50">
-            {t("resetSave")}
-          </button>
-          <div className="text-[11px] text-slate-500">{t("settingsNote")}</div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// === 机器人订阅模态框 ===
-function RobotModal({ open, onClose, onSubscribe, subscribed }: RobotModalProps) {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [acceptMarketing, setAcceptMarketing] = useState(true);
-
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white w-[min(480px,95vw)] rounded-2xl border shadow-lg p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="font-semibold text-lg">🤖 {t("robotTool")}</div>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-700">
-            ✖
-          </button>
-        </div>
-        {subscribed ? (
-          <div className="text-center py-6">
-            <div className="text-6xl mb-4">✓</div>
-            <div className="text-lg font-medium text-emerald-600">{t("subscribeSuccess")}</div>
-            <div className="text-sm text-slate-500 mt-2">{t("emailNotify")}</div>
-          </div>
-        ) : (
-          <>
-            <div className="text-sm text-slate-600 mb-4">{t("subscribeDescription")}</div>
-            <div className="space-y-3">
-              <div>
-                <div className="text-sm text-slate-700 mb-1">{t("name")}：</div>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg"
-                  placeholder={t("name")}
-                />
-              </div>
-              <div>
-                <div className="text-sm text-slate-700 mb-1">{t("email")}：</div>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg"
-                  placeholder="example@email.com"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={acceptMarketing}
-                  onChange={e => setAcceptMarketing(e.target.checked)}
-                  className="w-4 h-4"
-                />
-                <label className="text-sm text-slate-600">{t("acceptMarketing")}</label>
-              </div>
-            </div>
-            <div className="flex gap-2 mt-4">
-              <button
-                onClick={() => {
-                  if (!name.trim() || !email.trim()) {
-                    toast(t("pleaseFillInfo"));
-                    return;
-                  }
-                  onSubscribe(name, email, acceptMarketing);
-                }}
-                className="flex-1 px-3 py-1.5 rounded-lg border bg-emerald-100 hover:bg-emerald-200 text-emerald-700"
-              >
-                {t("subscribe")}
-              </button>
-              <button onClick={onClose} className="px-3 py-1.5 rounded-lg border bg-white hover:bg-slate-50">
-                {t("close")}
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// === 宠物商店模态框 ===
-function PetModal({ open, onClose, pets, onBuyPet }: PetModalProps) {
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-y-auto">
-      <div className="bg-white w-[min(640px,95vw)] rounded-2xl border shadow-lg p-4 m-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="font-semibold text-lg">🐶 {t("petTool")}</div>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-700">
-            ✖
-          </button>
-        </div>
-        <div className="text-sm text-slate-600 mb-4">{t("petShopDesc")}</div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {PETS.map(pet => {
-            const owned = pets[pet.id] || false;
-            const dailyEarn = (pet.coinsPerHour * 24).toFixed(2);
-            return (
-              <div
-                key={pet.id}
-                className={`p-4 rounded-xl border ${owned ? "bg-emerald-50 border-emerald-300" : "bg-white border-slate-200"}`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-4xl">{pet.emoji}</span>
-                    <div>
-                      <div className="font-medium">{pet.name}</div>
-                      <div className="text-xs text-slate-500">
-                        {t("offlineCoins")}: {pet.coinsPerHour.toFixed(3)}/{t("perHour")}
-                      </div>
-                    </div>
-                  </div>
-                  {owned && <span className="text-emerald-600 text-sm">✓</span>}
-                </div>
-                <div className="text-xs text-slate-600 mb-3">
-                  {t("dailyEarn")} {dailyEarn} {t("coins")}
-                </div>
-                {!owned ? (
-                  <button
-                    onClick={() => onBuyPet(pet.id)}
-                    className="w-full px-3 py-2 rounded-lg border bg-white hover:bg-slate-50 text-sm"
-                  >
-                    {t("buy")} - {pet.price} {t("coins")}
-                  </button>
-                ) : (
-                  <div className="text-center py-2 text-sm text-emerald-600 font-medium">{t("owned")}</div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
+/**********************
+ * 轻量 Toast 系统     *
+ **********************/
+interface ToastItem {
+  id: number;
+  text: string;
 }
 
 /**********************
@@ -2139,18 +1321,17 @@ function ToastArea() {
         return (
           <div
             key={t.id}
-            className="relative px-3 py-2 rounded-xl text-white text-sm shadow-lg backdrop-blur overflow-hidden"
+            className="px-4 py-2 rounded-lg border shadow-lg text-sm text-white animate-toast"
             style={{
-              animation: isLatest
-                ? "toastFadeIn 0.3s ease-out, toastShine 1s ease-in-out"
-                : "toastFadeOut 0.3s ease-in",
-              background: isLatest
-                ? `linear-gradient(45deg, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.9)), linear-gradient(90deg, transparent 30%, rgba(255,255,255,0.3) 50%, transparent 70%), linear-gradient(45deg, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.9))`
-                : `rgba(15, 23, 42, 0.9)`,
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              animation: isLatest ? "toastSlideIn 0.3s ease-out, toastFadeOut 0.4s ease-in 2.2s" : undefined,
+              backgroundImage: isLatest
+                ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%), linear-gradient(90deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 100%)"
+                : undefined,
               backgroundSize: isLatest ? "100%, 200%, 100%" : "100%",
             }}
           >
-            <span className="relative z-10">{t.text}</span>
+            {t.text}
           </div>
         );
       })}
@@ -2158,42 +1339,6 @@ function ToastArea() {
   );
 }
 
-// ====== dev=1：测试（仅新增，不修改原有） ======
-(function DevTests() {
-  if (typeof window === "undefined") return;
-  const isDev = new URLSearchParams(window.location.search).get("dev") === "1";
-  if (!isDev) return;
-  try {
-    const results: any[] = [];
-    const add = (name: string, cond: boolean, extra = "") => {
-      results.push({ name, pass: !!cond, extra });
-    };
-    add("cursorForTool returns string", typeof cursorForTool("plant") === "string");
-    const seed = SEEDS.radish;
-    const t0 = 1000;
-    const plantedAt = t0 - (seed.stages[0] - 1);
-    const fakePlot: any = {
-      id: 0,
-      seedId: "radish",
-      plantedAt,
-      fertilized: false,
-      weeds: false,
-      pests: false,
-      unlocked: true,
-      wateredAt: null,
-      waterRequirements: [],
-      weedRequirements: [],
-      pausedDuration: 0,
-      protectedUntil: 0,
-    };
-    add("yieldAmount >=1", yieldAmount(fakePlot) >= 1);
-    console.log("[DEV EXTRA TESTS]", results);
-  } catch (e) {
-    console.warn("Dev tests init failed", e);
-  }
-})();
-
-// Next.js 页面导出
 const Home: NextPage = () => {
   return <SocialFarmGame />;
 };

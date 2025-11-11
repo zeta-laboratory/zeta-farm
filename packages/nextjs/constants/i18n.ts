@@ -145,6 +145,7 @@ export const I18N: I18nConfig = {
     wordComplete: "短语已集齐",
     redeemSuccess: "兑换成功",
     alreadyRedeemed: "已兑换过",
+    equivalentValue: "等值",
     // Fertilizer
     fertilizer: "肥料",
     plotNotUnlocked: "地块未解锁",
@@ -308,6 +309,7 @@ export const I18N: I18nConfig = {
     wordComplete: "Phrase complete",
     redeemSuccess: "Redeem successful",
     alreadyRedeemed: "Already redeemed",
+    equivalentValue: "Worth",
     // Fertilizer
     fertilizer: "Fertilizer",
     plotNotUnlocked: "Plot not unlocked",
@@ -472,6 +474,7 @@ export const I18N: I18nConfig = {
     wordComplete: "구문 완성",
     redeemSuccess: "교환 성공",
     alreadyRedeemed: "이미 교환됨",
+    equivalentValue: "상당",
     // Fertilizer
     fertilizer: "비료",
     plotNotUnlocked: "땅이 잠겨 있음",
