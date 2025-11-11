@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { NextPage } from "next";
+import { Header } from "~~/components/Header";
 import { AutumnBackground } from "~~/components/Layout/AutumnBackground";
 import { Banner } from "~~/components/Layout/Banner";
 // 导入布局组件
@@ -666,6 +667,7 @@ function SocialFarmGame() {
    **********************/
   return (
     <div className="min-h-screen relative text-slate-800 font-sans">
+      <Header />
       <AutumnBackground />
       <div className="relative z-10" style={{ cursor: cursorForTool(save.tool) }}>
         <TopBar

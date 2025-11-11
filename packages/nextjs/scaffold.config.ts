@@ -1,4 +1,31 @@
+import { defineChain } from "viem";
 import * as chains from "viem/chains";
+
+// Define ZetaChain Testnet
+export const zetachainTestnet = defineChain({
+  id: 7001,
+  name: "ZetaChain Testnet",
+  nativeCurrency: {
+    decimals: 18,
+    name: "ZETA",
+    symbol: "ZETA",
+  },
+  rpcUrls: {
+    default: {
+      http: ["https://zetachain-athens-evm.blockpi.network/v1/rpc/public"],
+    },
+    public: {
+      http: ["https://zetachain-athens-evm.blockpi.network/v1/rpc/public"],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: "ZetaChain Explorer",
+      url: "https://athens.explorer.zetachain.com",
+    },
+  },
+  testnet: true,
+});
 
 export type BaseConfig = {
   targetNetworks: readonly chains.Chain[];
@@ -15,7 +42,7 @@ export const DEFAULT_ALCHEMY_API_KEY = "cR4WnXePioePZ5fFrnSiR";
 
 const scaffoldConfig = {
   // The networks on which your DApp is live
-  targetNetworks: [chains.foundry],
+  targetNetworks: [zetachainTestnet],
   // The interval at which your front-end polls the RPC servers for new data (it has no effect if you only target the local network (default is 4000))
   pollingInterval: 30000,
   // This is ours Alchemy's default API key.
@@ -34,7 +61,7 @@ const scaffoldConfig = {
   // It's recommended to store it in an env variable:
   // .env.local for local testing, and in the Vercel/system env config for live apps.
   walletConnectProjectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || "3a8170812b534d0ff9d794f19a901d64",
-  onlyLocalBurnerWallet: true,
+  onlyLocalBurnerWallet: false,
 } as const satisfies ScaffoldConfig;
 
 export default scaffoldConfig;
