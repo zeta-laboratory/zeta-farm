@@ -46,26 +46,32 @@ export interface BackendPlot {
   waterRequirements: WaterRequirement[];
   weedRequirements: WeedRequirement[];
   fertilized: boolean;
-  protectedUntil: number;
-  status?: {
-    stage: string;
-    needsWater: boolean;
-    hasWeeds: boolean;
-    hasPests: boolean;
-    effectiveElapsedTime: number;
-    progress: number;
-    isReady: boolean;
-  };
+  protectedUntil: number | null;
+
+  // 后端新增字段
+  pests: boolean;
+  lastPestCheckAt: number | null;
+  matureAt: number | null;
+  witheredAt: number | null;
+  stage: string | null;
+
+  // 兼容字段（后端返回的计算结果）
+  needsWater?: boolean;
+  hasWeeds?: boolean;
+  progress?: number;
+  isReady?: boolean;
 }
 
 export interface WaterRequirement {
   time: number;
   done: boolean;
+  doneAt?: number | null; // 实际完成时间戳
 }
 
 export interface WeedRequirement {
   time: number;
   done: boolean;
+  doneAt?: number | null; // 实际完成时间戳
 }
 
 export interface ActionRequest {

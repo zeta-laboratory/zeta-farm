@@ -184,7 +184,7 @@ export function convertBackendStateToFrontend(backendData: any): any {
     tickets: backendData.tickets || 0,
     exp: backendData.exp || 0,
 
-    // 地块列表：plots_list -> plots，并转换 seedId
+    // 地块列表：plots_list -> plots，直接使用后端返回的完整字段
     plots: (backendData.plots_list || []).map((plot: any) => ({
       id: plot.plot_index,
       unlocked: plot.unlocked || false,
@@ -192,12 +192,25 @@ export function convertBackendStateToFrontend(backendData: any): any {
       plantedAt: plot.plantedAt || null,
       pausedDuration: plot.pausedDuration || 0,
       pausedAt: plot.pausedAt || null,
+      protectedUntil: plot.protectedUntil || null,
+      fertilized: plot.fertilized || false,
+
+      // 浇水/除草需求（包含 doneAt 字段）
       waterRequirements: plot.waterRequirements || [],
       weedRequirements: plot.weedRequirements || [],
-      weeds: plot.status?.hasWeeds || false,
-      pests: plot.status?.hasPests || false,
-      protectedUntil: plot.protectedUntil || 0,
-      fertilized: plot.fertilized || false,
+
+      // 后端计算的状态（前端只读，直接使用）
+      pests: plot.pests || false,
+      lastPestCheckAt: plot.lastPestCheckAt || null,
+      matureAt: plot.matureAt || null,
+      witheredAt: plot.witheredAt || null,
+      stage: plot.stage || "empty",
+
+      // 兼容字段（后端返回的计算结果）
+      needsWater: plot.needsWater || false,
+      hasWeeds: plot.hasWeeds || false,
+      progress: plot.progress || 0,
+      isReady: plot.isReady || false,
     })),
 
     // 背包：从扁平结构分离为 seeds 和 fruits

@@ -23,13 +23,20 @@ export function createDefaultSave(): GameSave {
       seedId: null,
       plantedAt: null,
       fertilized: false,
-      wateredAt: null,
-      weeds: false,
       pests: false,
-      waterRequirements: [], // 浇水需求时间点数组 [{time: seconds, done: false}]
-      weedRequirements: [], // 除草需求时间点数组 [{time: seconds, done: false}]
+      waterRequirements: [], // 浇水需求时间点数组 [{time: seconds, done: boolean, doneAt: number | null}]
+      weedRequirements: [], // 除草需求时间点数组 [{time: seconds, done: boolean, doneAt: number | null}]
       pausedDuration: 0, // 累计暂停生长的时间（秒）
-      protectedUntil: 0,
+      pausedAt: null, // 暂停开始时间（秒）
+      protectedUntil: null,
+      lastPestCheckAt: null,
+      matureAt: null,
+      witheredAt: null,
+      stage: "empty",
+      // 兼容字段（用于前端展示）
+      needsWater: false,
+      hasWeeds: false,
+      progress: 0,
     })),
     // 初始背包：1个白萝卜种子
     inventory: { radish: 1 },

@@ -62,8 +62,9 @@ export function TopBar({ coins, zeta, tickets, exp, level, onProtect, lang, setL
                     lang === "zh" ? "bg-emerald-50" : ""
                   }`}
                   onClick={() => {
-                    setLang("zh");
+                    console.log("[TopBar] Switching to Chinese");
                     setLangMenuOpen(false);
+                    setLang("zh");
                   }}
                 >
                   中文
@@ -73,8 +74,9 @@ export function TopBar({ coins, zeta, tickets, exp, level, onProtect, lang, setL
                     lang === "en" ? "bg-emerald-50" : ""
                   }`}
                   onClick={() => {
-                    setLang("en");
+                    console.log("[TopBar] Switching to English");
                     setLangMenuOpen(false);
+                    setLang("en");
                   }}
                 >
                   English
@@ -84,8 +86,9 @@ export function TopBar({ coins, zeta, tickets, exp, level, onProtect, lang, setL
                     lang === "ko" ? "bg-emerald-50" : ""
                   }`}
                   onClick={() => {
-                    setLang("ko");
+                    console.log("[TopBar] Switching to Korean");
                     setLangMenuOpen(false);
+                    setLang("ko");
                   }}
                 >
                   한국어

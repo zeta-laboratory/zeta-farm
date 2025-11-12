@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { NextPage } from "next";
 import { useAccount } from "wagmi";
 import { AutumnBackground } from "~~/components/Layout/AutumnBackground";
@@ -19,7 +19,6 @@ import {
   ShopModal,
 } from "~~/components/Modals";
 // 导入常量配置
-import { PEST_PROBABILITY, TICK_MS } from "~~/constants/game";
 import { I18N } from "~~/constants/i18n";
 // 导入 ID 映射工具
 import { convertBackendStateToFrontend, frontendSeedToBackend } from "~~/constants/idMapping";
@@ -27,8 +26,7 @@ import { PETS } from "~~/constants/pets";
 import { SEEDS } from "~~/constants/seeds";
 // 导入 hooks
 import { useGameAction } from "~~/hooks/useGameAction";
-// 导入 API 服务
-import { getUserState } from "~~/services/api/userService";
+import { useGameState } from "~~/hooks/useGameState";
 // 导入类型定义
 import type { CurrencyType, GameSave, Language, Plot, ToolType } from "~~/types";
 // 导入游戏工具函数
@@ -42,7 +40,6 @@ import {
   getPlotUnlockLevel,
   hasCheckedInToday, // 时间相关
   now,
-  randomChance,
   soilTextureStyle,
   stageOf,
   timeToNextStage,
@@ -90,32 +87,20 @@ function SocialFarmGame() {
   // 钱包连接
   const { address, isConnected } = useAccount();
 
-  // 游戏操作 hook
-  const gameAction = useGameAction({
-    onSuccess: backendState => {
-      // 转换后端数据为前端格式并更新游戏状态
-      const frontendState = convertBackendStateToFrontend(backendState);
-      setSave(prev => ({
-        ...prev,
-        ...frontendState,
-      }));
-    },
-    onError: error => {
-      console.error("Game action failed:", error);
-      toast(error.message);
-    },
-    showToast: message => {
-      toast(message);
-    },
-  });
+  // 使用 useRef 存储语言，避免重新渲染
+  const langRef = useRef(detectLanguage());
+  const [, forceUpdate] = useState(0);
 
-  const [lang, setLang] = useState(() => detectLanguage());
-
-  // 当语言改变时，更新全局变量并保存到 localStorage（语言设置保留本地存储）
-  useEffect(() => {
-    currentLanguage = lang;
-    localStorage.setItem("farm-language", lang);
-  }, [lang]);
+  // 语言切换函数
+  const setLang = useCallback((newLang: string) => {
+    console.log("[Language] Switching to:", newLang);
+    langRef.current = newLang;
+    currentLanguage = newLang;
+    localStorage.setItem("farm-language", newLang);
+    console.log("[Language] Switch complete");
+    // 强制更新 UI 以反映语言变化
+    forceUpdate(prev => prev + 1);
+  }, []);
 
   // 游戏状态 - 初始化为空状态，等待从后端加载
   const [save, setSave] = useState<GameSave>({
@@ -127,14 +112,16 @@ function SocialFarmGame() {
         seedId: null,
         plantedAt: null,
         fertilized: false,
-        weeds: false,
         pests: false,
-        wateredAt: null,
         waterRequirements: [],
         weedRequirements: [],
         pausedDuration: 0,
         pausedAt: null,
-        protectedUntil: 0,
+        protectedUntil: null,
+        lastPestCheckAt: null,
+        matureAt: null,
+        witheredAt: null,
+        stage: "empty",
       })),
     inventory: {},
     coins: 0,
@@ -158,30 +145,68 @@ function SocialFarmGame() {
     __testingBoostApplied: false,
   });
 
-  // 监听钱包连接，加载用户数据
+  // ========== 游戏操作回调（使用 useCallback 避免重新渲染） ==========
+  const handleGameActionSuccess = useCallback((backendState: any) => {
+    // 转换后端数据为前端格式并更新游戏状态
+    const frontendState = convertBackendStateToFrontend(backendState);
+    setSave(prev => ({
+      ...prev,
+      ...frontendState,
+    }));
+  }, []);
+
+  const handleGameActionError = useCallback((error: Error) => {
+    console.error("Game action failed:", error);
+    toast(error.message);
+  }, []);
+
+  const handleShowToast = useCallback((message: string) => {
+    toast(message);
+  }, []);
+
+  // 游戏操作 hook
+  const gameAction = useGameAction({
+    onSuccess: handleGameActionSuccess,
+    onError: handleGameActionError,
+    showToast: handleShowToast,
+  });
+
+  // ========== ✅ 新：定时刷新游戏状态（10秒） ==========
+  // 使用 useCallback 包装回调避免每次渲染都重新创建
+  const handleGameStateSuccess = useCallback((state: Partial<GameSave>) => {
+    console.log("[Game] State refreshed from backend");
+    setSave(prev => ({ ...prev, ...state }));
+  }, []);
+
+  const handleGameStateError = useCallback((error: Error) => {
+    console.error("[Game] State refresh failed:", error);
+  }, []);
+
+  const gameState = useGameState({
+    address,
+    enabled: isConnected && !!address,
+    onSuccess: handleGameStateSuccess,
+    onError: handleGameStateError,
+  });
+
+  // 监听钱包连接，初始加载用户数据
   useEffect(() => {
-    if (isConnected && address) {
-      getUserState(address)
-        .then(response => {
-          // 将后端返回的数据映射到游戏状态（使用统一的转换函数）
-          const mappedState = convertBackendStateToFrontend(response);
+    if (!isConnected || !address) return;
 
-          setSave(prev => ({
-            ...prev,
-            ...mappedState,
-          }));
-
+    // 首次加载
+    gameState
+      .fetchGameState()
+      .then(state => {
+        if (state) {
+          setSave(prev => ({ ...prev, ...state }));
           toast(`Welcome back! Loaded game state for ${address.slice(0, 6)}...${address.slice(-4)}`);
-        })
-        .catch(error => {
-          console.error("Failed to load user state:", error);
-          toast("Failed to load game state. Using default state.");
-        })
-        .finally(() => {
-          // Loading complete
-        });
-    }
-  }, [isConnected, address]);
+        }
+      })
+      .catch(error => {
+        console.error("Failed to load user state:", error);
+        toast("Failed to load game state. Using default state.");
+      });
+  }, [isConnected, address]); // gameState.fetchGameState 依赖已在 hook 中处理
 
   const lvl = useMemo(() => getLevel(save.exp), [save.exp]);
 
@@ -227,66 +252,20 @@ function SocialFarmGame() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // 仅在初始化时执行一次
 
-  // 每秒：检查浇水/除草需求并暂停生长，随机事件（害虫）
+  // ========== 🚫 已废弃：本地时间流逝逻辑 ==========
+  // 前端不再自行计算暂停、虫害等逻辑
+  // 改由后端完全掌控，前端仅展示状态
+  // 使用 useGameState hook 进行定时刷新
+  /*
   useEffect(() => {
     const id = setInterval(() => {
       setSave((prev: any) => {
-        const next = { ...prev };
-        next.plots = prev.plots.map((p: Plot) => {
-          if (!p.seedId || !p.plantedAt) return p;
-
-          // 计算实际生长时间（不包含暂停时间）
-          const actualElapsed = now() - p.plantedAt - (p.pausedDuration || 0);
-          let hasActiveWaterReq = false;
-          let hasActiveWeedReq = false;
-
-          // 检查浇水需求
-          for (const req of p.waterRequirements || []) {
-            if (!req.done && actualElapsed >= req.time) {
-              hasActiveWaterReq = true;
-              // 如果还没开始暂停，记录暂停开始时间
-              if (!p.pausedAt) {
-                p = { ...p, pausedAt: now() };
-              }
-            }
-          }
-
-          // 检查除草需求
-          for (const req of p.weedRequirements || []) {
-            if (!req.done && actualElapsed >= req.time) {
-              hasActiveWeedReq = true;
-              // 如果还没开始暂停，记录暂停开始时间
-              if (!p.pausedAt) {
-                p = { ...p, pausedAt: now() };
-              }
-            }
-          }
-
-          // 如果有未完成的需求，累计暂停时间
-          if (hasActiveWaterReq || hasActiveWeedReq) {
-            if (p.pausedAt) {
-              // const pausedSince = now() - p.pausedAt; // 未来可能用于显示暂停时长
-              p = { ...p, pausedDuration: (p.pausedDuration || 0) + 1 };
-            }
-          } else if (p.pausedAt) {
-            // 所有需求都完成了，清除暂停
-            p = { ...p, pausedAt: null };
-          }
-
-          // 随机事件：害虫（不暂停生长）
-          const st = stageOf(p);
-          if (st === STAGE.RIPE || st === STAGE.GROWING) {
-            const pests = p.pests || randomChance(PEST_PROBABILITY);
-            return { ...p, pests };
-          }
-
-          return p;
-        });
-        return next;
+        // ... 旧的本地计算逻辑 ...
       });
     }, TICK_MS);
     return () => clearInterval(id);
   }, []);
+  */
 
   // 工具/种子选择 + 指针
   function setTool(t: string) {
@@ -376,7 +355,8 @@ function SocialFarmGame() {
     if (!isConnected || !address) return toast("Please connect wallet first");
     if (!plot.unlocked) return;
     if (!plot.seedId) return;
-    if (!plot.weeds) return toast(t("noWeeds"));
+    // 使用后端返回的 hasWeeds 字段
+    if (!plot.hasWeeds) return toast(t("noWeeds"));
 
     try {
       await gameAction.execute("weed", {
@@ -628,7 +608,7 @@ function SocialFarmGame() {
           exp={save.exp}
           level={lvl}
           onProtect={protectFarm}
-          lang={lang as Language}
+          lang={langRef.current as Language}
           setLang={setLang}
           t={t}
         />
@@ -720,7 +700,7 @@ function SocialFarmGame() {
                   {t("letterCollection")}
                 </button>
               </div>
-              <SettingsPanel onReset={resetSave} language={lang} />
+              <SettingsPanel onReset={resetSave} language={langRef.current} />
             </div>
           </div>
         </div>
@@ -750,7 +730,7 @@ function SocialFarmGame() {
             }
           }}
           fruits={save.fruits || {}}
-          language={lang}
+          language={langRef.current}
         />
         <BankModal
           open={bankOpen}
@@ -775,7 +755,7 @@ function SocialFarmGame() {
               console.error("Exchange failed:", error);
             }
           }}
-          language={lang}
+          language={langRef.current}
         />
         <GluckModal
           open={gluckOpen}
@@ -799,7 +779,7 @@ function SocialFarmGame() {
             }
           }}
           tickets={save.tickets}
-          language={lang}
+          language={langRef.current}
         />
         <CheckinModal
           open={checkinOpen}
@@ -807,7 +787,7 @@ function SocialFarmGame() {
           onCheckin={performCheckin}
           checkinLastDate={save.checkinLastDate}
           checkinRecords={save.checkinRecords || {}}
-          language={lang}
+          language={langRef.current}
         />
         <LetterCollectionModal
           open={letterCollectionOpen}
@@ -832,7 +812,7 @@ function SocialFarmGame() {
               console.error("Redeem failed:", error);
             }
           }}
-          language={lang}
+          language={langRef.current}
         />
         <RobotModal
           open={robotOpen || save.tool === "robot"}
@@ -842,7 +822,7 @@ function SocialFarmGame() {
           }}
           onSubscribe={handleRobotSubscribe}
           subscribed={save.robotSubscribed || false}
-          language={lang}
+          language={langRef.current}
         />
         <PetModal
           open={petOpen || save.tool === "pet"}
@@ -852,7 +832,7 @@ function SocialFarmGame() {
           }}
           pets={save.pets || {}}
           onBuyPet={buyPet}
-          language={lang}
+          language={langRef.current}
         />
         <ToastArea />
       </div>
@@ -999,11 +979,12 @@ function PlotTile({ plot, onClick, onUnlock }: PlotTileProps) {
           </div>
         )}
       </div>
-      {(plot.weeds || plot.pests || hasActiveWaterReq || hasActiveWeedReq) && (
+      {/* 使用后端返回的状态字段 */}
+      {(plot.hasWeeds || plot.pests || hasActiveWaterReq || hasActiveWeedReq) && (
         <div className="absolute bottom-12 left-0 right-0 flex gap-1 justify-center pointer-events-none z-20">
           {hasActiveWaterReq && <Badge text={t("needWater")} color="bg-sky-700" />}
           {hasActiveWeedReq && <Badge text={t("needWeed")} color="bg-lime-700" />}
-          {plot.weeds && !hasActiveWeedReq && <Badge text={t("weeds")} color="bg-lime-700" />}
+          {plot.hasWeeds && !hasActiveWeedReq && <Badge text={t("weeds")} color="bg-lime-700" />}
           {plot.pests && <Badge text={t("pests")} color="bg-yellow-700" />}
         </div>
       )}
