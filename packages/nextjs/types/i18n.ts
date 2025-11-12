@@ -147,6 +147,8 @@ export interface TranslationTexts {
   redeemSuccess: string;
   alreadyRedeemed: string;
   equivalentValue: string;
+  myLetters: string;
+  noLettersYet: string;
   // Fertilizer
   fertilizer: string;
   plotNotUnlocked: string;

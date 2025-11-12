@@ -27,6 +27,9 @@ export function LetterCollectionModal({
 
   if (!open) return null;
 
+  // 调试信息：打印接收到的letter数据
+  console.log("[LetterCollectionModal] Collected letters:", collectedLetters);
+
   // 检查每个短语是否完整
   const checkPhraseComplete = (phrase: string) => {
     const letters = phrase.split("").filter((c: string) => /[A-Za-z]/.test(c));
@@ -44,6 +47,27 @@ export function LetterCollectionModal({
         </div>
 
         <div className="text-sm text-slate-600 mb-3">{t("collectWordHint")}</div>
+
+        {/* 已收集的字母展示 */}
+        <div className="mb-4 p-3 bg-slate-50 rounded-lg border">
+          <div className="text-xs font-medium text-slate-700 mb-2">{t("myLetters")}:</div>
+          <div className="flex flex-wrap gap-1">
+            {Object.keys(collectedLetters).length > 0 ? (
+              Object.entries(collectedLetters)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([letter, count]) => (
+                  <div
+                    key={letter}
+                    className="px-2 py-1 rounded bg-emerald-100 border border-emerald-300 text-emerald-700 text-sm font-medium"
+                  >
+                    {letter} ×{count}
+                  </div>
+                ))
+            ) : (
+              <div className="text-xs text-slate-400">{t("noLettersYet")}</div>
+            )}
+          </div>
+        </div>
 
         {/* 短语列表 */}
         <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">

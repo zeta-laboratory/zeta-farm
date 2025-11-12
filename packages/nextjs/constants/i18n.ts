@@ -149,6 +149,8 @@ export const I18N: I18nConfig = {
     redeemSuccess: "兑换成功",
     alreadyRedeemed: "已兑换过",
     equivalentValue: "等值",
+    myLetters: "我的字母",
+    noLettersYet: "暂无字母，收获作物有50%概率掉落字母",
     // Fertilizer
     fertilizer: "肥料",
     plotNotUnlocked: "地块未解锁",
@@ -316,6 +318,8 @@ export const I18N: I18nConfig = {
     redeemSuccess: "Redeem successful",
     alreadyRedeemed: "Already redeemed",
     equivalentValue: "Worth",
+    myLetters: "My Letters",
+    noLettersYet: "No letters yet, harvest crops for 50% chance to get a letter",
     // Fertilizer
     fertilizer: "Fertilizer",
     plotNotUnlocked: "Plot not unlocked",
@@ -483,7 +487,9 @@ export const I18N: I18nConfig = {
     wordComplete: "구문 완성",
     redeemSuccess: "교환 성공",
     alreadyRedeemed: "이미 교환됨",
-    equivalentValue: "상당",
+    equivalentValue: "가치",
+    myLetters: "내 문자",
+    noLettersYet: "아직 문자가 없습니다. 작물을 수확하면 50% 확률로 문자를 얻습니다",
     // Fertilizer
     fertilizer: "비료",
     plotNotUnlocked: "땅이 잠겨 있음",
