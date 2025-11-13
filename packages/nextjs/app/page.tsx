@@ -54,6 +54,11 @@ import {
  **********************/
 // 检测浏览器语言
 function detectLanguage(): string {
+  // 检查是否在浏览器环境
+  if (typeof window === "undefined") {
+    return "en"; // 服务器端默认中文
+  }
+
   const saved = localStorage.getItem("farm-language");
   if (saved && (saved === "zh" || saved === "en" || saved === "ko")) {
     return saved;
@@ -65,7 +70,7 @@ function detectLanguage(): string {
 }
 
 // 获取当前语言文本
-let currentLanguage: string = detectLanguage();
+let currentLanguage: string = "zh"; // 默认中文，会在组件挂载后更新
 function t(key: string): string {
   const langData = I18N[currentLanguage as keyof typeof I18N];
   return (langData?.[key as keyof typeof langData] as string) || I18N.zh[key as keyof typeof I18N.zh] || key;
@@ -88,15 +93,26 @@ function SocialFarmGame() {
   const { address, isConnected } = useAccount();
 
   // 使用 useRef 存储语言，避免重新渲染
-  const langRef = useRef(detectLanguage());
+  const langRef = useRef("zh"); // 初始默认中文
   const [, forceUpdate] = useState(0);
+
+  // 初始化语言（仅在客户端执行）
+  useEffect(() => {
+    const initialLang = detectLanguage();
+    langRef.current = initialLang;
+    currentLanguage = initialLang;
+    forceUpdate(prev => prev + 1);
+  }, []);
 
   // 语言切换函数
   const setLang = useCallback((newLang: string) => {
     console.log("[Language] Switching to:", newLang);
     langRef.current = newLang;
     currentLanguage = newLang;
-    localStorage.setItem("farm-language", newLang);
+    // 只在浏览器环境中使用 localStorage
+    if (typeof window !== "undefined") {
+      localStorage.setItem("farm-language", newLang);
+    }
     console.log("[Language] Switch complete");
     // 强制更新 UI 以反映语言变化
     forceUpdate(prev => prev + 1);

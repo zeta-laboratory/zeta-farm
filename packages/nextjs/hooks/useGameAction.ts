@@ -47,8 +47,8 @@ export function useGameAction(options?: GameActionOptions) {
       options?.showToast?.("Please confirm transaction in your wallet...");
       const txHash = await recordAction(
         actionType,
-        signatureResponse.timestamp, // 使用 timestamp 作为 data
-        signatureResponse.nonce,
+        Number(signatureResponse.timestamp), // 转换字符串为数字
+        Number(signatureResponse.nonce), // 转换字符串为数字
         signatureResponse.signature,
       );
 

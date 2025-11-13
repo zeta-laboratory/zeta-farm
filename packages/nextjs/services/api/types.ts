@@ -3,9 +3,11 @@
 export interface SignatureResponse {
   success: boolean;
   signature: string;
-  timestamp: number;
-  deadline: number;
-  nonce: number;
+  timestamp: string; // 操作数据（字符串格式，使用时需转换）
+  nonce: string; // 用户 nonce（字符串格式，使用时需转换）
+  actionType?: string; // 操作类型
+  data?: string; // 操作数据（字符串格式）
+  user?: string; // 用户地址
   message?: string;
 }
 
