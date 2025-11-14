@@ -7,18 +7,13 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   7001: {
     FarmTreasury: {
-      address: "0xddfce9b1667914e9a2b31c6a47d62f4f68f6d7b8",
+      address: "0x24cae2386be06d5bfbe21a791f2dc44a6d42d066",
       abi: [
         {
           type: "constructor",
           inputs: [
             {
               name: "_backendSigner",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "_prizePoolAddress",
               type: "address",
               internalType: "address",
             },
@@ -56,6 +51,19 @@ const deployedContracts = {
               name: "",
               type: "uint256",
               internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "EXCHANGE_TYPEHASH",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "bytes32",
+              internalType: "bytes32",
             },
           ],
           stateMutability: "view",
@@ -184,6 +192,29 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "exchangeCoinsForZeta",
+          inputs: [
+            {
+              name: "amount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "nonce",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "signature",
+              type: "bytes",
+              internalType: "bytes",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
           name: "getUserNonce",
           inputs: [
             {
@@ -204,19 +235,6 @@ const deployedContracts = {
         {
           type: "function",
           name: "owner",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "prizePoolAddress",
           inputs: [],
           outputs: [
             {
@@ -316,19 +334,6 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "updatePrizePoolAddress",
-          inputs: [
-            {
-              name: "_newAddress",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
           name: "userNonces",
           inputs: [
             {
@@ -355,8 +360,34 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "withdrawCommunityTo",
+          inputs: [
+            {
+              name: "to",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
           name: "withdrawPrizePool",
           inputs: [],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "withdrawPrizePoolTo",
+          inputs: [
+            {
+              name: "to",
+              type: "address",
+              internalType: "address",
+            },
+          ],
           outputs: [],
           stateMutability: "nonpayable",
         },
@@ -456,6 +487,31 @@ const deployedContracts = {
         },
         {
           type: "event",
+          name: "ExchangePerformed",
+          inputs: [
+            {
+              name: "user",
+              type: "address",
+              indexed: true,
+              internalType: "address",
+            },
+            {
+              name: "amount",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+            {
+              name: "nonce",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "event",
           name: "FundsDistributed",
           inputs: [
             {
@@ -525,25 +581,6 @@ const deployedContracts = {
         },
         {
           type: "event",
-          name: "PrizePoolAddressUpdated",
-          inputs: [
-            {
-              name: "oldAddress",
-              type: "address",
-              indexed: true,
-              internalType: "address",
-            },
-            {
-              name: "newAddress",
-              type: "address",
-              indexed: true,
-              internalType: "address",
-            },
-          ],
-          anonymous: false,
-        },
-        {
-          type: "event",
           name: "PrizePoolWithdrawn",
           inputs: [
             {
@@ -563,57 +600,8 @@ const deployedContracts = {
         },
         {
           type: "error",
-          name: "ECDSAInvalidSignature",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "ECDSAInvalidSignatureLength",
-          inputs: [
-            {
-              name: "length",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "ECDSAInvalidSignatureS",
-          inputs: [
-            {
-              name: "s",
-              type: "bytes32",
-              internalType: "bytes32",
-            },
-          ],
-        },
-        {
-          type: "error",
           name: "InvalidShortString",
           inputs: [],
-        },
-        {
-          type: "error",
-          name: "OwnableInvalidOwner",
-          inputs: [
-            {
-              name: "owner",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "OwnableUnauthorizedAccount",
-          inputs: [
-            {
-              name: "account",
-              type: "address",
-              internalType: "address",
-            },
-          ],
         },
         {
           type: "error",
@@ -628,7 +616,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 13908623,
+      deployedOnBlock: 13989631,
     },
   },
 } as const;

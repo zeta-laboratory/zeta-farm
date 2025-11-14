@@ -780,16 +780,50 @@ function SocialFarmGame() {
             if (!isConnected || !address) return toast("Please connect wallet first");
 
             try {
+              // capture previous inventory/fruits so we can compute the gained items
+              const prevInventory = { ...(save.inventory || {}) } as Record<string, number>;
+              const prevFruits = { ...(save.fruits || {}) } as Record<string, number>;
+
               const newState = await gameAction.execute("draw", {
                 count: n,
               });
 
+              // convert backend state to frontend shape so we can read inventory/fruits
+              const frontendNewState = convertBackendStateToFrontend(newState as any);
+
               setSave(prev => ({
                 ...prev,
-                ...newState,
+                ...frontendNewState,
               }));
 
-              toast(t("drew"));
+              // compute deltas
+              const gained: string[] = [];
+              const nextInventory = (frontendNewState.inventory || {}) as Record<string, number>;
+              const nextFruits = (frontendNewState.fruits || {}) as Record<string, number>;
+
+              for (const [id, cnt] of Object.entries(nextInventory)) {
+                const prev = prevInventory[id] || 0;
+                if ((cnt || 0) > prev) {
+                  const diff = (cnt || 0) - prev;
+                  const name = (SEEDS as any)[id as any]?.name || id;
+                  gained.push(`${name} ×${diff}`);
+                }
+              }
+
+              for (const [id, cnt] of Object.entries(nextFruits)) {
+                const prev = prevFruits[id] || 0;
+                if ((cnt || 0) > prev) {
+                  const diff = (cnt || 0) - prev;
+                  const name = (SEEDS as any)[id as any]?.name || id;
+                  gained.push(`${name} (fruit) ×${diff}`);
+                }
+              }
+
+              if (gained.length > 0) {
+                toast(`${t("drew")} ${gained.join(", ")}`);
+              } else {
+                toast(t("drew"));
+              }
             } catch (error) {
               console.error("Draw failed:", error);
             }
