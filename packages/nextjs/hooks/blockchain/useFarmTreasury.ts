@@ -28,8 +28,23 @@ export function useFarmTreasury() {
     }
   };
 
+  const exchangeCoinsForZeta = async (amount: bigint | number | string, nonce: number, signature: string) => {
+    try {
+      const result = await writeContractAsync({
+        functionName: "exchangeCoinsForZeta",
+        args: [BigInt(amount), BigInt(nonce), signature as `0x${string}`],
+      });
+
+      return result;
+    } catch (error) {
+      console.error("Exchange failed:", error);
+      throw error;
+    }
+  };
+
   return {
     recordAction,
+    exchangeCoinsForZeta,
     isPending,
   };
 }

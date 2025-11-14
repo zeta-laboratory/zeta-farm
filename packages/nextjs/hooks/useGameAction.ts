@@ -14,7 +14,7 @@ export interface GameActionOptions {
 
 export function useGameAction(options?: GameActionOptions) {
   const { address, isConnected } = useAccount();
-  const { recordAction, isPending: isContractPending } = useFarmTreasury();
+  const { recordAction, exchangeCoinsForZeta, isPending: isContractPending } = useFarmTreasury();
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -45,12 +45,23 @@ export function useGameAction(options?: GameActionOptions) {
 
       // 3. 调用合约
       options?.showToast?.("Please confirm transaction in your wallet...");
-      const txHash = await recordAction(
-        actionType,
-        Number(signatureResponse.timestamp), // 转换字符串为数字
-        Number(signatureResponse.nonce), // 转换字符串为数字
-        signatureResponse.signature,
-      );
+
+      let txHash: any;
+
+      // 如果是兑换并且后端返回了 amount（wei），调用 exchangeCoinsForZeta（on-chain payout）
+      if (actionType === "exchange" && (signatureResponse as any).amount) {
+        const amountWei = BigInt((signatureResponse as any).amount);
+        const nonceNum = Number((signatureResponse as any).nonce);
+        txHash = await exchangeCoinsForZeta(amountWei, nonceNum, signatureResponse.signature);
+      } else {
+        // default path: recordAction (record game action and pay fee)
+        txHash = await recordAction(
+          actionType,
+          Number(signatureResponse.timestamp), // 转换字符串为数字
+          Number(signatureResponse.nonce), // 转换字符串为数字
+          signatureResponse.signature,
+        );
+      }
 
       // 4. 等待交易确认
       options?.showToast?.("Transaction confirmed! Processing...");

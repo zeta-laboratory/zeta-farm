@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
 import "../contracts/FarmTreasury.sol";
@@ -18,8 +18,16 @@ contract FarmTreasuryTest is Test {
     address public prizePoolAddress;
     address public communityAddress;
 
+    // Events for testing
+    event ActionRecorded(address indexed user, string actionType, uint256 data, uint256 timestamp);
+    event BackendSignerUpdated(address indexed oldSigner, address indexed newSigner);
+    event InitialPrizePoolDeposited(address indexed from, uint256 amount);
+
     // EIP-712 Domain
     bytes32 private DOMAIN_SEPARATOR;
+
+    // Receive function to accept ETH transfers
+    receive() external payable {}
 
     // 常量
     uint256 constant ACTION_FEE = 0.0975 ether;
@@ -43,7 +51,7 @@ contract FarmTreasuryTest is Test {
         communityAddress = address(0x2222);
 
         // 部署合约
-        farmTreasury = new FarmTreasury(backendSigner, prizePoolAddress, communityAddress);
+        farmTreasury = new FarmTreasury(backendSigner, communityAddress);
 
         // 计算 DOMAIN_SEPARATOR
         DOMAIN_SEPARATOR = keccak256(
@@ -64,7 +72,6 @@ contract FarmTreasuryTest is Test {
 
     function testInitialState() public view {
         assertEq(farmTreasury.backendSigner(), backendSigner);
-        assertEq(farmTreasury.prizePoolAddress(), prizePoolAddress);
         assertEq(farmTreasury.communityAddress(), communityAddress);
         assertEq(farmTreasury.owner(), owner);
         assertEq(farmTreasury.userNonces(user), 0);
@@ -96,7 +103,7 @@ contract FarmTreasuryTest is Test {
         // 记录操作（支付 0.0975 ZETA）
         vm.prank(user);
         vm.expectEmit(true, false, false, true);
-        emit FarmTreasury.ActionRecorded(user, actionType, data, block.timestamp);
+        emit ActionRecorded(user, actionType, data, block.timestamp);
         farmTreasury.recordActionWithSignature{value: ACTION_FEE}(actionType, data, nonce, signature);
 
         // 验证 nonce 增加
@@ -190,7 +197,7 @@ contract FarmTreasuryTest is Test {
         address newSigner = address(0x999);
         
         vm.expectEmit(true, true, false, false);
-        emit FarmTreasury.BackendSignerUpdated(backendSigner, newSigner);
+        emit BackendSignerUpdated(backendSigner, newSigner);
         farmTreasury.updateBackendSigner(newSigner);
 
         assertEq(farmTreasury.backendSigner(), newSigner);
@@ -237,11 +244,11 @@ contract FarmTreasuryTest is Test {
         assertEq(farmTreasury.prizePoolBalance(), expectedAmount);
 
         // 提取奖池资金
-        uint256 beforeBalance = prizePoolAddress.balance;
+        uint256 beforeBalance = owner.balance;
         farmTreasury.withdrawPrizePool();
         
         assertEq(farmTreasury.prizePoolBalance(), 0);
-        assertEq(prizePoolAddress.balance, beforeBalance + expectedAmount);
+        assertEq(owner.balance, beforeBalance + expectedAmount);
     }
 
     function testWithdrawCommunity() public {
@@ -267,7 +274,7 @@ contract FarmTreasuryTest is Test {
         vm.deal(owner, initialDeposit);
         
         vm.expectEmit(true, false, false, true);
-        emit FarmTreasury.InitialPrizePoolDeposited(owner, initialDeposit);
+        emit InitialPrizePoolDeposited(owner, initialDeposit);
         farmTreasury.depositToPrizePool{value: initialDeposit}();
         
         assertEq(farmTreasury.prizePoolBalance(), initialDeposit);
@@ -304,11 +311,11 @@ contract FarmTreasuryTest is Test {
         assertEq(farmTreasury.prizePoolBalance(), expectedTotal);
         
         // 4. 提取奖池资金
-        uint256 beforeBalance = prizePoolAddress.balance;
+        uint256 beforeBalance = owner.balance;
         farmTreasury.withdrawPrizePool();
         
         assertEq(farmTreasury.prizePoolBalance(), 0);
-        assertEq(prizePoolAddress.balance, beforeBalance + expectedTotal);
+        assertEq(owner.balance, beforeBalance + expectedTotal);
     }
 
     // Helper function

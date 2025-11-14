@@ -8,6 +8,9 @@ export interface SignatureResponse {
   actionType?: string; // 操作类型
   data?: string; // 操作数据（字符串格式）
   user?: string; // 用户地址
+  amount?: string; // 对于 exchange 返回的 amount (wei)
+  coins?: string; // 原始 coins 数量（可选）
+  zeta?: string; // 兑换后 zeta 数量（可选）
   message?: string;
 }
 
