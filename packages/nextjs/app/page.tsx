@@ -40,7 +40,6 @@ import {
   getPlotUnlockLevel,
   hasCheckedInToday, // 时间相关
   now,
-  soilTextureStyle,
   stageOf,
   timeToNextStage,
 } from "~~/utils/game";
@@ -667,8 +666,6 @@ function SocialFarmGame() {
                       break;
                   }
                 }}
-                onHarvest={harvest}
-                onShovel={shovel}
                 onUnlock={unlockPlot}
               />
             </div>
@@ -906,17 +903,14 @@ function SocialFarmGame() {
 interface BoardProps {
   plots: Plot[];
   onPlotClick: (plot: Plot) => void;
-  onHarvest: (plot: Plot) => void;
-  onShovel: (plot: Plot) => void;
   onUnlock: (plot: Plot) => void;
 }
 
 interface PlotTileProps {
   plot: Plot;
   onClick: () => void;
-  onHarvest: () => void;
-  onShovel: () => void;
   onUnlock: () => void;
+  posStyle?: React.CSSProperties;
 }
 
 interface BadgeProps {
@@ -942,55 +936,149 @@ interface BagPanelProps {
  * 子组件              *
  **********************/
 
-function Board({ plots, onPlotClick, onHarvest, onShovel, onUnlock }: BoardProps) {
+function Board({ plots, onPlotClick, onUnlock }: BoardProps) {
+  // Use absolute positioning to create a slanted/isometric layout closer to the
+  // reference image. We compute left/top per-tile based on index, column and row.
+  const cols = 6; // match previous layout for large screens
+  const tileW = 160; // visual tile width in px (slightly larger)
+  const tileH = 120; // visual tile height in px
+  const xSpacing = 84; // base horizontal spacing between tiles
+  const ySpacing = 48; // base vertical spacing between rows
+
+  const rows = Math.ceil(plots.length / cols);
+  const containerHeight = rows * ySpacing + tileH;
+
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
-      {plots.map((p: Plot) => (
-        <PlotTile
-          key={p.id}
-          plot={p}
-          onClick={() => onPlotClick(p)}
-          onHarvest={() => onHarvest(p)}
-          onShovel={() => onShovel(p)}
-          onUnlock={() => onUnlock(p)}
-        />
-      ))}
+    <div className="relative w-full" style={{ height: containerHeight }}>
+      {plots.map((p: Plot, idx: number) => {
+        const col = idx % cols;
+        const row = Math.floor(idx / cols);
+
+        // compute a slanted layout: rows are slightly shifted left as they go down
+        // Isometric-ish placement: map (col,row) to diagonal grid
+        // isoX = (col - row) * xStep + baseX
+        // isoY = (col + row) * yStep + baseY
+        const xStep = xSpacing;
+        const yStep = ySpacing;
+        const baseX = 60; // tweak to center; fine-tune later
+        const baseY = 12;
+
+        const left = (col - row) * xStep + baseX;
+        const top = (col + row) * yStep + baseY - row * 6; // slight upward push for deeper rows
+
+        // Keep tile z-index small (below modals) but still order tiles so
+        // those closer to top-left appear above those further down/right.
+        // Use a small base (10+) so tiles stay under typical modal/toast z-indexes
+        // while preserving relative stacking between tiles.
+        const zIndex = 10 + (rows - (col + row));
+
+        const posStyle: React.CSSProperties = {
+          position: "absolute",
+          left: `${left}px`,
+          top: `${top}px`,
+          width: `${tileW}px`,
+          height: `${tileH}px`,
+          zIndex,
+        };
+
+        return (
+          <PlotTile
+            key={p.id}
+            plot={p}
+            posStyle={posStyle}
+            onClick={() => onPlotClick(p)}
+            onUnlock={() => onUnlock(p)}
+          />
+        );
+      })}
+      {/* Crop overlay layer: render all crop images in a single top layer so they can sit above tiles */}
+      {plots.map((p: Plot, idx: number) => {
+        const col = idx % cols;
+        const row = Math.floor(idx / cols);
+        const xStep = xSpacing;
+        const yStep = ySpacing;
+        const baseX = 60;
+        const baseY = 12;
+        const left = (col - row) * xStep + baseX;
+        const top = (col + row) * yStep + baseY - row * 6;
+
+        const seed = p.seedId ? SEEDS[p.seedId] : null;
+        const st = stageOf(p);
+        const stageImageSrc = (() => {
+          if (!seed) return null;
+          if (st === STAGE.SEED) return "/corns/seed.png";
+          if (st === STAGE.SPROUT) return "/corns/sprout.png";
+          if (st === STAGE.GROWING || st === STAGE.RIPE) return `/corns/${seed.id}.png`;
+          return null;
+        })();
+
+        if (!stageImageSrc) return null;
+
+        return (
+          <div
+            key={`crop-${p.id}`}
+            style={{
+              position: "absolute",
+              left: `${left}px`,
+              top: `${top}px`,
+              width: `${tileW}px`,
+              height: `${tileH}px`,
+              pointerEvents: "none",
+              zIndex: 40,
+              ["--tile-h" as any]: `${tileH}px`,
+            }}
+          >
+            <div
+              className="absolute left-1/2 pointer-events-none"
+              style={{
+                bottom: "calc(var(--tile-h) * 0.48)",
+                transform: "translateX(-50%) translateX(5px) translateY(12px)",
+              }}
+            >
+              {/* Using plain img intentionally for predictable game UI sizing */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={stageImageSrc} alt={seed ? seed.name : ""} className="w-28 h-28 object-contain" />
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
 
-function PlotTile({ plot, onClick, onUnlock }: PlotTileProps) {
+function PlotTile({ plot, onClick, onUnlock, posStyle }: PlotTileProps) {
   const st = stageOf(plot);
   const seed = plot.seedId ? SEEDS[plot.seedId] : null;
   const timeNext = timeToNextStage(plot);
-  // protection removed
 
-  // 如果未解锁，显示开垦界面
+  // 如果未解锁，显示开垦界面（简洁样式）
   if (!plot.unlocked) {
     const unlockCost = getPlotUnlockCost(plot.id);
     const requiredLevel = getPlotUnlockLevel(plot.id);
     return (
-      <div className="relative select-none p-2 rounded-3xl border shadow-sm bg-gray-100/50 opacity-60">
-        <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-          <span>#{plot.id + 1}</span>
-          <span className="text-slate-400">🔒 {t("locked")}</span>
-        </div>
-        <div className="flex flex-col items-center py-6 h-32 justify-center">
-          <div className="text-3xl opacity-50">🔒</div>
-          <div className="text-sm mt-2 font-medium text-slate-600">{t("wasteland")}</div>
-          <div className="text-[10px] mt-1 text-slate-500">
+      <div style={posStyle} className="select-none relative">
+        <img
+          src="/plots/plot-cube.png"
+          alt="locked-plot"
+          className="w-full h-full object-contain opacity-60"
+          style={{ filter: "grayscale(40%) brightness(0.95)" }}
+        />
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-sm text-white/90 pointer-events-none">
+          <div className="text-2xl">🔒</div>
+          <div className="mt-1 text-xs">
             {t("needLevel")} {requiredLevel}
+          </div>
+          <div className="mt-1 text-xs">
+            {t("unlockCost")} {unlockCost} {t("coins")}
           </div>
         </div>
         <button
-          className="w-full mt-2 text-sm py-1.5 rounded-2xl border bg-white/90 hover:bg-white text-slate-700"
           onClick={e => {
             e.stopPropagation();
             if (onUnlock) onUnlock();
           }}
-        >
-          💰 {unlockCost} 金币
-        </button>
+          className="absolute inset-0 bg-transparent border-0"
+        />
       </div>
     );
   }
@@ -1003,65 +1091,38 @@ function PlotTile({ plot, onClick, onUnlock }: PlotTileProps) {
     r => !r.done && (Boolean((plot as any).pausedAt) || actualElapsed >= r.time),
   );
 
-  const labelByStage: Record<string, string> = {
-    [STAGE.EMPTY]: t("empty"),
-    [STAGE.SEED]: t("seeding"),
-    [STAGE.SPROUT]: t("sprout"),
-    [STAGE.GROWING]: t("growing"),
-    [STAGE.RIPE]: t("ripe"),
-    [STAGE.WITHER]: t("wither"),
-  };
-
-  // We replace emoji with images from public/corns/
-  const stageImageSrc = (() => {
-    if (!seed) return null;
-    // Keep WITHER as emoji fallback per request
-    if (st === STAGE.WITHER) return null;
-    if (st === STAGE.SEED) return "/corns/seed.png";
-    if (st === STAGE.SPROUT) return "/corns/sprout.png";
-    // For growing/ripe we show the crop image
-    if (st === STAGE.GROWING || st === STAGE.RIPE) return `/corns/${seed.id}.png`;
-    return null;
-  })();
+  // (stage label and image are rendered in the Board layer overlay)
 
   return (
     <div
-      onClick={onClick}
-      className="relative select-none p-0 rounded-3xl border shadow-sm hover:shadow transition"
-      style={soilTextureStyle()}
+      style={{
+        ...(posStyle || {}),
+        background: "transparent",
+        cursor: "pointer",
+        ["--tile-h" as any]: posStyle?.height || "120px",
+      }}
+      className="select-none relative"
     >
       <img
         src="/plots/plot-cube.png"
         alt="plot tile"
-        className="absolute top-0 left-0 w-full h-full object-contain pointer-events-none"
-        style={{ transform: "translateY(6px)" }}
+        className="absolute top-0 left-0 w-full h-full object-contain pointer-events-none drop-shadow-md"
+        style={{ transform: "translateY(10px)", objectPosition: "center bottom" }}
       />
-      <div className="flex items-center justify-between text-xs text-white/85">
-        <span>#{plot.id + 1}</span>
-        {/* protection indicator removed */}
+
+      {/* top label */}
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 text-white text-sm font-medium pointer-events-none">
+        {seed ? seed.name : t("empty")}
       </div>
-      <div className="flex flex-col items-center py-3 h-32 justify-center relative">
-        <div className="text-4xl">
-          {stageImageSrc ? (
-            <img src={stageImageSrc} alt={seed ? seed.name : ""} className="w-20 h-20 object-contain" />
-          ) : // fallback to emoji for empty/wither
-          st === STAGE.EMPTY ? (
-            ""
-          ) : st === STAGE.WITHER ? (
-            "🪦"
-          ) : (
-            ""
-          )}
-        </div>
-        <div className="text-sm mt-1 font-medium text-white">{seed ? seed.name : t("empty")}</div>
-        <div className="text-xs text-white/80 h-4">{seed ? labelByStage[st] : ""}</div>
-        {seed && st === STAGE.RIPE && (
-          <div className="text-[11px] text-white/70 mt-1">
-            {t("witherIn")}：{fmtTime(timeNext)}
-          </div>
-        )}
+
+      {/* seed / crop image moved to Board overlay to ensure crops render above all tiles */}
+
+      {/* small status (time / badges) */}
+      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs text-white/80 pointer-events-none">
+        {st === STAGE.RIPE ? t("harvest") : st === STAGE.EMPTY ? t("nothingToDo") : fmtTime(timeNext)}
       </div>
-      {/* 使用后端返回的状态字段 */}
+
+      {/* badges (water/weeds/pests) */}
       {(plot.hasWeeds || plot.pests || hasActiveWaterReq || hasActiveWeedReq) && (
         <div className="absolute bottom-12 left-0 right-0 flex gap-1 justify-center pointer-events-none z-20">
           {hasActiveWaterReq && <Badge text={t("needWater")} color="bg-sky-700" />}
@@ -1070,42 +1131,15 @@ function PlotTile({ plot, onClick, onUnlock }: PlotTileProps) {
           {plot.pests && <Badge text={t("pests")} color="bg-yellow-700" />}
         </div>
       )}
-      <div className="relative w-full mt-2">
-        <button
-          className="w-full text-sm py-1.5 rounded-2xl border bg-white/90 hover:bg-white relative overflow-hidden"
-          onClick={onClick}
-        >
-          {seed && st !== STAGE.WITHER && st !== STAGE.EMPTY && st !== STAGE.RIPE && (
-            <div className="absolute inset-0 bg-green-100/30 rounded-2xl">
-              <div
-                className="absolute inset-0 bg-green-400/40 rounded-2xl transition-all"
-                style={{
-                  width: `${(() => {
-                    const elapsed = now() - (plot.plantedAt || 0) - (plot.pausedDuration || 0);
-                    const [s1, s2, s3] = seed.stages;
-                    if (st === STAGE.SEED) {
-                      return Math.max(0, Math.min(100, (elapsed / s1) * 100));
-                    } else if (st === STAGE.SPROUT) {
-                      return Math.max(0, Math.min(100, ((elapsed - s1) / (s2 - s1)) * 100));
-                    } else if (st === STAGE.GROWING) {
-                      return Math.max(0, Math.min(100, ((elapsed - s2) / (s3 - s2)) * 100));
-                    }
-                    return 0;
-                  })()}%`,
-                }}
-              />
-            </div>
-          )}
-          <span className="relative z-10">
-            {(() => {
-              if (st === STAGE.EMPTY) return t("nothingToDo");
-              if (st === STAGE.RIPE) return t("harvest");
-              if (st === STAGE.WITHER) return t("remove");
-              return `${fmtTime(timeNext)}`;
-            })()}
-          </span>
-        </button>
-      </div>
+
+      {/* invisible full-size click area */}
+      <button
+        className="absolute inset-0 bg-transparent border-0"
+        onClick={e => {
+          e.stopPropagation();
+          onClick();
+        }}
+      />
     </div>
   );
 }
