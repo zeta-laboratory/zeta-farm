@@ -995,11 +995,7 @@ function PlotTile({ plot, onClick, onUnlock }: PlotTileProps) {
     );
   }
 
-  // 计算实际生长时间，检查是否有未完成的浇水/除草需求
   const actualElapsed = plot.seedId && plot.plantedAt ? now() - plot.plantedAt - (plot.pausedDuration || 0) : 0;
-  // Keep badge visible once the plot has been paused (pausedAt set) OR the requirement time is reached.
-  // This avoids a flip-flop where pausedDuration reduces actualElapsed below the threshold and
-  // the badge briefly disappears.
   const hasActiveWaterReq = (plot.waterRequirements || []).some(
     r => !r.done && (Boolean((plot as any).pausedAt) || actualElapsed >= r.time),
   );
@@ -1031,30 +1027,36 @@ function PlotTile({ plot, onClick, onUnlock }: PlotTileProps) {
   return (
     <div
       onClick={onClick}
-      className="relative select-none p-2 rounded-3xl border shadow-sm hover:shadow transition"
+      className="relative select-none p-0 rounded-3xl border shadow-sm hover:shadow transition"
       style={soilTextureStyle()}
     >
-      <div className="flex items-center justify-between text-xs text-amber-900/85">
+      <img
+        src="/plots/plot-cube.png"
+        alt="plot tile"
+        className="absolute top-0 left-0 w-full h-full object-contain pointer-events-none"
+        style={{ transform: "translateY(6px)" }}
+      />
+      <div className="flex items-center justify-between text-xs text-white/85">
         <span>#{plot.id + 1}</span>
         {/* protection indicator removed */}
       </div>
       <div className="flex flex-col items-center py-3 h-32 justify-center relative">
         <div className="text-4xl">
           {stageImageSrc ? (
-            <img src={stageImageSrc} alt={seed ? seed.name : ""} className="w-10 h-10 object-contain" />
+            <img src={stageImageSrc} alt={seed ? seed.name : ""} className="w-20 h-20 object-contain" />
           ) : // fallback to emoji for empty/wither
           st === STAGE.EMPTY ? (
-            "⬜"
+            ""
           ) : st === STAGE.WITHER ? (
             "🪦"
           ) : (
             ""
           )}
         </div>
-        <div className="text-sm mt-1 font-medium text-amber-950">{seed ? seed.name : t("empty")}</div>
-        <div className="text-xs text-amber-900/70 h-4">{seed ? labelByStage[st] : ""}</div>
+        <div className="text-sm mt-1 font-medium text-white">{seed ? seed.name : t("empty")}</div>
+        <div className="text-xs text-white/80 h-4">{seed ? labelByStage[st] : ""}</div>
         {seed && st === STAGE.RIPE && (
-          <div className="text-[11px] text-amber-900/60 mt-1">
+          <div className="text-[11px] text-white/70 mt-1">
             {t("witherIn")}：{fmtTime(timeNext)}
           </div>
         )}
