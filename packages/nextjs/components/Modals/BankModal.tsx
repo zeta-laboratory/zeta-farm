@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { TICKET_EXCHANGE_RATE, ZETA_EXCHANGE_RATE } from "~~/constants/game";
 import { I18N } from "~~/constants/i18n";
 import { clamp } from "~~/utils/game";
 
@@ -20,9 +21,9 @@ export function BankModal({ open, onClose, coins, onExchange, language }: BankMo
     return (langData?.[key as keyof typeof langData] as string) || I18N.zh[key as keyof typeof I18N.zh] || key;
   };
   const [targetCurrency, setTargetCurrency] = useState<BankCurrency>("zeta");
-  const [amount, setAmount] = useState(10);
+  const [amount, setAmount] = useState<number>(ZETA_EXCHANGE_RATE);
 
-  const exchangeRate = targetCurrency === "zeta" ? 10 : 70;
+  const exchangeRate = targetCurrency === "zeta" ? ZETA_EXCHANGE_RATE : TICKET_EXCHANGE_RATE;
   const minAmount = exchangeRate;
 
   const validAmount = Math.max(minAmount, Math.min(amount, coins));
@@ -30,7 +31,7 @@ export function BankModal({ open, onClose, coins, onExchange, language }: BankMo
 
   const handleCurrencyChange = (newCurrency: BankCurrency) => {
     setTargetCurrency(newCurrency);
-    const newMin = newCurrency === "zeta" ? 10 : 70;
+    const newMin = newCurrency === "zeta" ? ZETA_EXCHANGE_RATE : TICKET_EXCHANGE_RATE;
     setAmount(newMin);
     if (amount < newMin) {
       setAmount(newMin);
@@ -75,7 +76,7 @@ export function BankModal({ open, onClose, coins, onExchange, language }: BankMo
               type="number"
               min={minAmount}
               max={coins}
-              step={targetCurrency === "zeta" ? 10 : 70}
+              step={exchangeRate}
               value={validAmount}
               onChange={e => setAmount(clamp(parseInt(e.target.value || String(minAmount), 10), minAmount, coins))}
               className="flex-1 px-3 py-2 border rounded-lg"
@@ -85,43 +86,43 @@ export function BankModal({ open, onClose, coins, onExchange, language }: BankMo
             {targetCurrency === "zeta" ? (
               <>
                 <button
-                  onClick={() => setAmount(10)}
+                  onClick={() => setAmount(ZETA_EXCHANGE_RATE)}
                   className="px-2 py-1 text-xs rounded border bg-white hover:bg-slate-50"
                 >
-                  10
+                  {ZETA_EXCHANGE_RATE}
                 </button>
                 <button
-                  onClick={() => setAmount(100)}
+                  onClick={() => setAmount(ZETA_EXCHANGE_RATE * 10)}
                   className="px-2 py-1 text-xs rounded border bg-white hover:bg-slate-50"
                 >
-                  100
+                  {ZETA_EXCHANGE_RATE * 10}
                 </button>
                 <button
-                  onClick={() => setAmount(1000)}
+                  onClick={() => setAmount(ZETA_EXCHANGE_RATE * 100)}
                   className="px-2 py-1 text-xs rounded border bg-white hover:bg-slate-50"
                 >
-                  1000
+                  {ZETA_EXCHANGE_RATE * 100}
                 </button>
               </>
             ) : (
               <>
                 <button
-                  onClick={() => setAmount(70)}
+                  onClick={() => setAmount(TICKET_EXCHANGE_RATE)}
                   className="px-2 py-1 text-xs rounded border bg-white hover:bg-slate-50"
                 >
-                  70
+                  {TICKET_EXCHANGE_RATE}
                 </button>
                 <button
-                  onClick={() => setAmount(350)}
+                  onClick={() => setAmount(TICKET_EXCHANGE_RATE * 5)}
                   className="px-2 py-1 text-xs rounded border bg-white hover:bg-slate-50"
                 >
-                  350
+                  {TICKET_EXCHANGE_RATE * 5}
                 </button>
                 <button
-                  onClick={() => setAmount(700)}
+                  onClick={() => setAmount(TICKET_EXCHANGE_RATE * 10)}
                   className="px-2 py-1 text-xs rounded border bg-white hover:bg-slate-50"
                 >
-                  700
+                  {TICKET_EXCHANGE_RATE * 10}
                 </button>
               </>
             )}

@@ -50,9 +50,9 @@ export const PEST_PROBABILITY = 0.004;
 /**
  * ZETA 兑换汇率（金币:ZETA）
  */
-export const ZETA_EXCHANGE_RATE = 10;
+export const ZETA_EXCHANGE_RATE = 20;
 
 /**
  * 奖券兑换汇率（金币:奖券）
  */
-export const TICKET_EXCHANGE_RATE = 70;
+export const TICKET_EXCHANGE_RATE = 50;
