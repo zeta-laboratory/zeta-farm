@@ -45,6 +45,9 @@ import {
   timeToNextStage,
 } from "~~/utils/game";
 
+// Image assets live in public/corns/
+// We use plain <img> here for simplicity and predictable sizing inside the game UI.
+
 /**********************
  * 基础常量与工具函数 *
  **********************/
@@ -988,8 +991,15 @@ function PlotTile({ plot, onClick, onUnlock }: PlotTileProps) {
 
   // 计算实际生长时间，检查是否有未完成的浇水/除草需求
   const actualElapsed = plot.seedId && plot.plantedAt ? now() - plot.plantedAt - (plot.pausedDuration || 0) : 0;
-  const hasActiveWaterReq = (plot.waterRequirements || []).some(r => !r.done && actualElapsed >= r.time);
-  const hasActiveWeedReq = (plot.weedRequirements || []).some(r => !r.done && actualElapsed >= r.time);
+  // Keep badge visible once the plot has been paused (pausedAt set) OR the requirement time is reached.
+  // This avoids a flip-flop where pausedDuration reduces actualElapsed below the threshold and
+  // the badge briefly disappears.
+  const hasActiveWaterReq = (plot.waterRequirements || []).some(
+    r => !r.done && (Boolean((plot as any).pausedAt) || actualElapsed >= r.time),
+  );
+  const hasActiveWeedReq = (plot.weedRequirements || []).some(
+    r => !r.done && (Boolean((plot as any).pausedAt) || actualElapsed >= r.time),
+  );
 
   const labelByStage: Record<string, string> = {
     [STAGE.EMPTY]: t("empty"),
@@ -1000,14 +1010,17 @@ function PlotTile({ plot, onClick, onUnlock }: PlotTileProps) {
     [STAGE.WITHER]: t("wither"),
   };
 
-  const stageEmoji: Record<string, string> = {
-    [STAGE.EMPTY]: "⬜",
-    [STAGE.SEED]: "🌱",
-    [STAGE.SPROUT]: "🌿",
-    [STAGE.GROWING]: "🌾",
-    [STAGE.RIPE]: seed?.emoji ?? "🍀",
-    [STAGE.WITHER]: "🪦",
-  };
+  // We replace emoji with images from public/corns/
+  const stageImageSrc = (() => {
+    if (!seed) return null;
+    // Keep WITHER as emoji fallback per request
+    if (st === STAGE.WITHER) return null;
+    if (st === STAGE.SEED) return "/corns/seed.png";
+    if (st === STAGE.SPROUT) return "/corns/sprout.png";
+    // For growing/ripe we show the crop image
+    if (st === STAGE.GROWING || st === STAGE.RIPE) return `/corns/${seed.id}.png`;
+    return null;
+  })();
 
   return (
     <div
@@ -1020,7 +1033,18 @@ function PlotTile({ plot, onClick, onUnlock }: PlotTileProps) {
         {isProtected && <span className="text-white">🛡️{t("protect")}</span>}
       </div>
       <div className="flex flex-col items-center py-3 h-32 justify-center relative">
-        <div className="text-4xl">{st === STAGE.RIPE && seed ? seed.emoji : stageEmoji[st]}</div>
+        <div className="text-4xl">
+          {stageImageSrc ? (
+            <img src={stageImageSrc} alt={seed ? seed.name : ""} className="w-10 h-10 object-contain" />
+          ) : // fallback to emoji for empty/wither
+          st === STAGE.EMPTY ? (
+            "⬜"
+          ) : st === STAGE.WITHER ? (
+            "🪦"
+          ) : (
+            ""
+          )}
+        </div>
         <div className="text-sm mt-1 font-medium text-amber-950">{seed ? seed.name : t("empty")}</div>
         <div className="text-xs text-amber-900/70 h-4">{seed ? labelByStage[st] : ""}</div>
         {seed && st === STAGE.RIPE && (
@@ -1153,7 +1177,11 @@ function BagPanel({ inventory, fruits, selected, onSelect }: BagPanelProps) {
                   title={`${s.name}`}
                 >
                   {hasCount && <div className="absolute inset-0 bg-amber-900/20 pointer-events-none" />}
-                  <span className={`relative z-10 ${!hasCount ? "opacity-40" : ""}`}>{s.emoji}</span>
+                  <img
+                    src={`/corns/${s.id}.png`}
+                    alt={s.name}
+                    className={`relative z-10 ${!hasCount ? "opacity-40" : ""} w-8 h-8 object-contain`}
+                  />
                   {count > 0 && (
                     <div className="absolute bottom-0 left-0 right-0 h-1/5 bg-amber-800/80 flex items-center justify-center rounded-b-xl pointer-events-none z-20">
                       <span className="text-[7px] font-bold text-white">{count}</span>
@@ -1192,7 +1220,11 @@ function BagPanel({ inventory, fruits, selected, onSelect }: BagPanelProps) {
                   }`}
                   title={`${s.name}`}
                 >
-                  <span className={!hasCount ? "opacity-40" : ""}>{s.emoji}</span>
+                  <img
+                    src={`/corns/${s.id}.png`}
+                    alt={s.name}
+                    className={!hasCount ? "opacity-40 w-8 h-8 object-contain" : "w-8 h-8 object-contain"}
+                  />
                   {count > 0 && (
                     <div className="absolute bottom-0 left-0 right-0 h-1/5 bg-amber-800/80 flex items-center justify-center rounded-b-xl pointer-events-none z-20">
                       <span className="text-[7px] font-bold text-white">{count}</span>

@@ -28,7 +28,7 @@ export const I18N: I18nConfig = {
     needWater: "需水",
     needWeed: "需除草",
     weeds: "杂草",
-    pests: "害虫",
+    pests: "🐛 害虫",
     nothingToDo: "💤 无事可做",
     harvest: "🧺 收获",
     remove: "🪓 铲除",
