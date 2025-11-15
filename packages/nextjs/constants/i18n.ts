@@ -34,7 +34,7 @@ export const I18N: I18nConfig = {
     locked: "未开垦",
     wasteland: "荒地",
     needLevel: "需要等级",
-    needWater: "需水",
+    needWater: " 💧 需水",
     needWeed: "需除草",
     weeds: "杂草",
     pests: "🐛 害虫",
