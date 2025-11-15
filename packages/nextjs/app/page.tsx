@@ -158,9 +158,7 @@ function SocialFarmGame() {
     fertilizer: 0,
     pets: {},
     robotSubscribed: false,
-    protectFreeUsed: false,
-    protectBoughtToday: 0,
-    protectLastDate: "",
+    // protection mechanic removed
     __testingBoostApplied: false,
   });
 
@@ -338,6 +336,9 @@ function SocialFarmGame() {
     const st = stageOf(plot);
     if (st !== STAGE.RIPE) return toast(t("notRipe"));
 
+    // Prevent harvesting when pests are present
+    if (plot.pests) return toast(t("cannotHarvestWithPests") || "Cannot harvest while pests are present");
+
     try {
       await gameAction.execute("harvest", {
         plotId: plot.id,
@@ -443,20 +444,6 @@ function SocialFarmGame() {
       toast(t("fertilizerSuccess"));
     } catch (error) {
       console.error("Fertilize failed:", error);
-    }
-  }
-
-  // 行为：农场保护
-  async function protectFarm() {
-    if (!isConnected || !address) return toast("Please connect wallet first");
-
-    try {
-      await gameAction.execute("protect", {});
-
-      // onSuccess 回调会自动更新状态
-      toast(t("protectUsed"));
-    } catch (error) {
-      console.error("Protect failed:", error);
     }
   }
 
@@ -626,7 +613,6 @@ function SocialFarmGame() {
           tickets={save.tickets}
           exp={save.exp}
           level={lvl}
-          onProtect={protectFarm}
           lang={langRef.current as Language}
           setLang={setLang}
           t={t}
@@ -957,7 +943,7 @@ function PlotTile({ plot, onClick, onUnlock }: PlotTileProps) {
   const st = stageOf(plot);
   const seed = plot.seedId ? SEEDS[plot.seedId] : null;
   const timeNext = timeToNextStage(plot);
-  const isProtected = (plot.protectedUntil || 0) > now();
+  // protection removed
 
   // 如果未解锁，显示开垦界面
   if (!plot.unlocked) {
@@ -1030,7 +1016,7 @@ function PlotTile({ plot, onClick, onUnlock }: PlotTileProps) {
     >
       <div className="flex items-center justify-between text-xs text-amber-900/85">
         <span>#{plot.id + 1}</span>
-        {isProtected && <span className="text-white">🛡️{t("protect")}</span>}
+        {/* protection indicator removed */}
       </div>
       <div className="flex flex-col items-center py-3 h-32 justify-center relative">
         <div className="text-4xl">

@@ -29,9 +29,7 @@ export interface GameSave {
   zeta: number;
   tickets: number;
   exp: number;
-  protectFreeUsed: boolean;
-  protectBoughtToday: number;
-  protectLastDate: string;
+  // protection mechanic removed
   checkinLastDate: string;
   checkinRecords: CheckinRecords;
   collectedLetters: CollectedLetters;

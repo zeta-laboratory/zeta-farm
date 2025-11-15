@@ -192,7 +192,6 @@ export function convertBackendStateToFrontend(backendData: any): any {
       plantedAt: plot.plantedAt || null,
       pausedDuration: plot.pausedDuration || 0,
       pausedAt: plot.pausedAt || null,
-      protectedUntil: plot.protectedUntil || null,
       fertilized: plot.fertilized || false,
 
       // 浇水/除草需求（包含 doneAt 字段）

@@ -11,13 +11,13 @@ interface TopBarProps {
   tickets: number;
   exp: number;
   level: number;
-  onProtect: () => void;
+  // onProtect removed
   lang: Language;
   setLang: (lang: Language) => void;
   t: (key: string) => string;
 }
 
-export function TopBar({ coins, zeta, tickets, exp, level, onProtect, lang, setLang, t }: TopBarProps) {
+export function TopBar({ coins, zeta, tickets, exp, level, lang, setLang, t }: TopBarProps) {
   const nextLvl = clamp(level, 1, LEVELS.length);
   const curNeed = LEVELS[nextLvl - 1] ?? 0;
   const nextNeed = LEVELS[nextLvl] ?? LEVELS[LEVELS.length - 1];
@@ -126,12 +126,7 @@ export function TopBar({ coins, zeta, tickets, exp, level, onProtect, lang, setL
               </div>
             )}
           </div>
-          <button
-            className="px-3 py-1 rounded-full bg-rose-100 border border-rose-200/80 hover:bg-rose-200"
-            onClick={onProtect}
-          >
-            🛡️ {t("protect30min")}
-          </button>
+          {/* Protect UI removed */}
         </div>
       </div>
       <div className="h-1 bg-amber-200/40">

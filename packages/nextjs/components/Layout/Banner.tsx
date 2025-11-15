@@ -22,7 +22,7 @@ export function Banner({ t }: BannerProps) {
       `}</style>
       <div className="max-w-6xl mx-auto px-3 text-sm font-medium relative z-10">{t("seasonText")}</div>
       <audio id="bgMusic" loop preload="auto">
-        <source src="/music/bg.mp3" type="audio/mpeg" />
+        <source src="/zfarm.wav" type="audio/wav" />
       </audio>
     </div>
   );

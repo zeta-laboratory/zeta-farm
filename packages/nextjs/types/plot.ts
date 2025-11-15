@@ -28,7 +28,7 @@ export interface Plot {
   fertilized: boolean;
   pausedDuration: number;
   pausedAt: number | null;
-  protectedUntil: number | null;
+  // protectedUntil removed
 
   // 浇水/除草需求
   waterRequirements: WaterRequirement[];

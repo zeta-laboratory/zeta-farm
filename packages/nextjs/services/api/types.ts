@@ -51,7 +51,7 @@ export interface BackendPlot {
   waterRequirements: WaterRequirement[];
   weedRequirements: WeedRequirement[];
   fertilized: boolean;
-  protectedUntil: number | null;
+  // protectedUntil removed (protection mechanic deprecated)
 
   // 后端新增字段
   pests: boolean;

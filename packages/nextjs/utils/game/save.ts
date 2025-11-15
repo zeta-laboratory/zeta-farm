@@ -1,4 +1,4 @@
-import { getTodayDateStr, now } from "./time";
+import { now } from "./time";
 import type { GameSave } from "~~/types";
 
 /**
@@ -10,9 +10,7 @@ export function createDefaultSave(): GameSave {
     zeta: 0, // 初始没有ZETA
     tickets: 0, // 初始没有奖券
     exp: 0, // 初始经验值为0，等级1
-    protectFreeUsed: false, // 今天是否已使用免费保护
-    protectBoughtToday: 0, // 今天购买保护的次数
-    protectLastDate: getTodayDateStr(), // 最后使用保护的日期
+    // protection mechanic removed: protectFreeUsed/protectBoughtToday/protectLastDate removed
     checkinLastDate: "", // 上次签到日期
     checkinRecords: {}, // 签到记录 { "2025-01": [1,2,3...] } 记录该月签到的日期
     collectedLetters: {}, // 收集的字母 { "A": 3, "B": 1, ... }
@@ -28,7 +26,6 @@ export function createDefaultSave(): GameSave {
       weedRequirements: [], // 除草需求时间点数组 [{time: seconds, done: boolean, doneAt: number | null}]
       pausedDuration: 0, // 累计暂停生长的时间（秒）
       pausedAt: null, // 暂停开始时间（秒）
-      protectedUntil: null,
       lastPestCheckAt: null,
       matureAt: null,
       witheredAt: null,

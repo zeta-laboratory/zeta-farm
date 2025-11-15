@@ -108,6 +108,7 @@ export interface TranslationTexts {
   removed: string;
   noWeeds: string;
   noPests: string;
+  cannotHarvestWithPests: string;
   plotUnlocked: string;
   levelInsufficient: string;
   currentLevel: string;
