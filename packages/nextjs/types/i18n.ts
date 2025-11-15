@@ -6,6 +6,14 @@ import { Language } from "./game";
 export interface TranslationTexts {
   // 通用
   switchLanguage: string;
+  pleaseConnectWallet: string;
+  welcomeBackLoaded: string;
+  loadFailedDefault: string;
+  requestingSignature: string;
+  confirmTransaction: string;
+  txConfirmedProcessing: string;
+  refreshingGameState: string;
+  actionCompleted: string;
   // TopBar
   level: string;
   protect: string;

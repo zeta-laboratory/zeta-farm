@@ -178,7 +178,13 @@ function SocialFarmGame() {
   }, []);
 
   const handleShowToast = useCallback((message: string) => {
-    toast(message);
+    // message may be an i18n key (preferred) or a raw string
+    try {
+      const translated = t(message);
+      toast(translated);
+    } catch {
+      toast(String(message));
+    }
   }, []);
 
   // 游戏操作 hook
@@ -216,12 +222,12 @@ function SocialFarmGame() {
       .then(state => {
         if (state) {
           setSave(prev => ({ ...prev, ...state }));
-          toast(`Welcome back! Loaded game state for ${address.slice(0, 6)}...${address.slice(-4)}`);
+          toast(`${t("welcomeBackLoaded")} ${address.slice(0, 6)}...${address.slice(-4)}`);
         }
       })
       .catch(error => {
         console.error("Failed to load user state:", error);
-        toast("Failed to load game state. Using default state.");
+        toast(t("loadFailedDefault"));
       });
   }, [isConnected, address]); // gameState.fetchGameState 依赖已在 hook 中处理
 
@@ -304,7 +310,7 @@ function SocialFarmGame() {
   // ========== Game Actions (Blockchain-based) ==========
   // 行为：播种
   async function plant(plot: Plot) {
-    if (!isConnected || !address) return toast("Please connect wallet first");
+    if (!isConnected || !address) return toast(t("pleaseConnectWallet"));
     if (!plot.unlocked) return toast(t("plotLocked"));
     if (!save.selectedSeed) return toast(t("selectSeedFirst"));
     if (plot.seedId) return toast(t("plotOccupied"));
@@ -330,7 +336,7 @@ function SocialFarmGame() {
 
   // 行为：收获
   async function harvest(plot: Plot) {
-    if (!isConnected || !address) return toast("Please connect wallet first");
+    if (!isConnected || !address) return toast(t("pleaseConnectWallet"));
     if (!plot.unlocked) return;
     if (!plot.seedId) return;
     const st = stageOf(plot);
@@ -354,7 +360,7 @@ function SocialFarmGame() {
 
   // 行为：浇水
   async function water(plot: Plot) {
-    if (!isConnected || !address) return toast("Please connect wallet first");
+    if (!isConnected || !address) return toast(t("pleaseConnectWallet"));
     if (!plot.unlocked) return;
     if (!plot.seedId) return;
 
@@ -372,7 +378,7 @@ function SocialFarmGame() {
 
   // 行为：除草
   async function weed(plot: Plot) {
-    if (!isConnected || !address) return toast("Please connect wallet first");
+    if (!isConnected || !address) return toast(t("pleaseConnectWallet"));
     if (!plot.unlocked) return;
     if (!plot.seedId) return;
     // 使用后端返回的 hasWeeds 字段
@@ -392,7 +398,7 @@ function SocialFarmGame() {
 
   // 行为：除虫
   async function pesticide(plot: Plot) {
-    if (!isConnected || !address) return toast("Please connect wallet first");
+    if (!isConnected || !address) return toast(t("pleaseConnectWallet"));
     if (!plot.unlocked) return;
     if (!plot.seedId) return;
     if (!plot.pests) return toast(t("noPests"));
@@ -411,7 +417,7 @@ function SocialFarmGame() {
 
   // 行为：铲除
   async function shovel(plot: Plot) {
-    if (!isConnected || !address) return toast("Please connect wallet first");
+    if (!isConnected || !address) return toast(t("pleaseConnectWallet"));
     if (!plot.unlocked) return;
     if (!plot.seedId) return;
 
@@ -429,7 +435,7 @@ function SocialFarmGame() {
 
   // 行为：施肥
   async function applyFertilizer(plot: Plot) {
-    if (!isConnected || !address) return toast("Please connect wallet first");
+    if (!isConnected || !address) return toast(t("pleaseConnectWallet"));
     if (!plot.unlocked) return toast(t("plotNotUnlocked"));
     if (!plot.seedId) return toast(t("plantFirst"));
     if (plot.fertilized) return toast(t("alreadyFertilized"));
@@ -449,7 +455,7 @@ function SocialFarmGame() {
 
   // 行为：解锁地块
   async function unlockPlot(plot: Plot) {
-    if (!isConnected || !address) return toast("Please connect wallet first");
+    if (!isConnected || !address) return toast(t("pleaseConnectWallet"));
     if (plot.unlocked) return toast(t("plotUnlocked"));
 
     const reqLv = getPlotUnlockLevel(plot.id);
@@ -477,7 +483,7 @@ function SocialFarmGame() {
     if (!confirm(t("resetConfirm"))) return;
 
     if (!isConnected || !address) {
-      toast("Please connect wallet first");
+      toast(t("pleaseConnectWallet"));
       return;
     }
 
@@ -489,7 +495,7 @@ function SocialFarmGame() {
 
   // 购买种子（只能用金币，无等级限制）
   async function buySeed(id: string, count = 1) {
-    if (!isConnected || !address) return toast("Please connect wallet first");
+    if (!isConnected || !address) return toast(t("pleaseConnectWallet"));
 
     try {
       const newState = await gameAction.execute("buySeed", {
@@ -511,7 +517,7 @@ function SocialFarmGame() {
 
   // 购买肥料（只能用金币）
   async function buyFertilizer(count = 1) {
-    if (!isConnected || !address) return toast("Please connect wallet first");
+    if (!isConnected || !address) return toast(t("pleaseConnectWallet"));
 
     try {
       const newState = await gameAction.execute("buyFertilizer", {
@@ -531,7 +537,7 @@ function SocialFarmGame() {
 
   // 购买宠物
   async function buyPet(petId: string) {
-    if (!isConnected || !address) return toast("Please connect wallet first");
+    if (!isConnected || !address) return toast(t("pleaseConnectWallet"));
 
     try {
       const newState = await gameAction.execute("buyPet", {
@@ -552,9 +558,12 @@ function SocialFarmGame() {
 
   // 每日签到
   async function performCheckin() {
-    if (!isConnected || !address) return toast("Please connect wallet first");
+    if (!isConnected || !address) return toast(t("pleaseConnectWallet"));
 
     try {
+      // capture previous coins so we can compute the reward amount shown to the user
+      const prevCoins = save.coins || 0;
+
       const newState = await gameAction.execute("checkin", {});
 
       setSave(prev => ({
@@ -562,7 +571,14 @@ function SocialFarmGame() {
         ...newState,
       }));
 
-      toast(t("checkinSuccess"));
+      // compute reward as delta between returned coins and previous coins
+      const reward = (newState.coins || 0) - prevCoins;
+      if (typeof reward === "number" && reward > 0) {
+        toast(`${t("checkinSuccess")} ${reward} ${t("coins")}！`);
+      } else {
+        // fallback to generic message if delta not available
+        toast(t("checkinSuccess"));
+      }
     } catch (error) {
       console.error("Checkin failed:", error);
     }
@@ -570,7 +586,7 @@ function SocialFarmGame() {
 
   // 处理机器人订阅
   async function handleRobotSubscribe(name: string, email: string, acceptMarketing: boolean) {
-    if (!isConnected || !address) return toast("Please connect wallet first");
+    if (!isConnected || !address) return toast(t("pleaseConnectWallet"));
 
     try {
       const newState = await gameAction.execute("subscribeRobot", {
@@ -715,7 +731,8 @@ function SocialFarmGame() {
           buySeed={buySeed}
           buyFertilizer={buyFertilizer}
           sellFruit={async (id: string, count: number) => {
-            if (!isConnected || !address) return toast("Please connect wallet first");
+            if (!isConnected || !address) return toast(t("pleaseConnectWallet"));
+            if (!isConnected || !address) return toast(t("pleaseConnectWallet"));
 
             try {
               const newState = await gameAction.execute("sellFruit", {
@@ -742,7 +759,8 @@ function SocialFarmGame() {
           onClose={() => setBankOpen(false)}
           coins={save.coins}
           onExchange={async (amount: number, targetCurrency: CurrencyType) => {
-            if (!isConnected || !address) return toast("Please connect wallet first");
+            if (!isConnected || !address) return toast(t("pleaseConnectWallet"));
+            if (!isConnected || !address) return toast(t("pleaseConnectWallet"));
 
             try {
               const newState = await gameAction.execute("exchange", {
@@ -766,7 +784,8 @@ function SocialFarmGame() {
           open={gluckOpen}
           onClose={() => setGluckOpen(false)}
           onDraw={async (n: number) => {
-            if (!isConnected || !address) return toast("Please connect wallet first");
+            if (!isConnected || !address) return toast(t("pleaseConnectWallet"));
+            if (!isConnected || !address) return toast(t("pleaseConnectWallet"));
 
             try {
               // capture previous inventory/fruits so we can compute the gained items
@@ -834,7 +853,8 @@ function SocialFarmGame() {
           collectedLetters={save.collectedLetters || {}}
           redeemedRewards={save.redeemedRewards || []}
           onRedeem={async (rewardId: string) => {
-            if (!isConnected || !address) return toast("Please connect wallet first");
+            if (!isConnected || !address) return toast(t("pleaseConnectWallet"));
+            if (!isConnected || !address) return toast(t("pleaseConnectWallet"));
 
             try {
               const newState = await gameAction.execute("redeemReward", {

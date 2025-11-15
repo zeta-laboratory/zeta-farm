@@ -7,6 +7,15 @@ export const I18N: I18nConfig = {
   zh: {
     // 通用
     switchLanguage: "切换语言",
+    pleaseConnectWallet: "请先连接钱包",
+    welcomeBackLoaded: "欢迎回来！已加载存档",
+    loadFailedDefault: "加载用户状态失败，使用默认状态",
+    // wallet / tx flow
+    requestingSignature: "请求签名...",
+    confirmTransaction: "请在钱包中确认交易...",
+    txConfirmedProcessing: "交易已确认，正在处理...",
+    refreshingGameState: "正在刷新游戏状态...",
+    actionCompleted: "✅ 操作完成！",
     // TopBar
     level: "等级",
     protect: "保护",
@@ -188,6 +197,14 @@ export const I18N: I18nConfig = {
   },
   en: {
     switchLanguage: "Switch Language",
+    pleaseConnectWallet: "Please connect wallet first",
+    welcomeBackLoaded: "Welcome back! Loaded game state for",
+    loadFailedDefault: "Failed to load game state. Using default state.",
+    requestingSignature: "Requesting signature...",
+    confirmTransaction: "Please confirm transaction in your wallet...",
+    txConfirmedProcessing: "Transaction confirmed! Processing...",
+    refreshingGameState: "Refreshing game state...",
+    actionCompleted: "✅ Action completed!",
     level: "Level",
     protect: "Protect",
     protect30min: "Protect 30 min",
@@ -358,6 +375,14 @@ export const I18N: I18nConfig = {
   },
   ko: {
     switchLanguage: "언어 변경",
+    pleaseConnectWallet: "지갑을 먼저 연결하세요",
+    welcomeBackLoaded: "다시 오신 것을 환영합니다! 저장된 게임 상태를 불러왔습니다",
+    loadFailedDefault: "사용자 상태를 불러오지 못했습니다. 기본 상태 사용 중",
+    requestingSignature: "서명 요청 중...",
+    confirmTransaction: "지갑에서 거래를 승인해 주세요...",
+    txConfirmedProcessing: "거래 확인됨! 처리 중...",
+    refreshingGameState: "게임 상태 새로고침 중...",
+    actionCompleted: "✅ 操作已完成!",
     level: "레벨",
     protect: "보호",
     protect30min: "30분 보호",

@@ -28,10 +28,11 @@ export function useGameAction(options?: GameActionOptions) {
   const execute = async (actionType: string, actionData: any): Promise<UserStateResponse> => {
     // 1. 检查钱包连接
     if (!isConnected || !address) {
-      const error = new Error("Please connect your wallet first");
+      const error = new Error("pleaseConnectWallet");
       setError(error);
       options?.onError?.(error);
-      options?.showToast?.("Please connect your wallet first");
+      // send i18n key to showToast; caller (UI) should translate via t(key)
+      options?.showToast?.("pleaseConnectWallet");
       throw error;
     }
 
@@ -40,11 +41,11 @@ export function useGameAction(options?: GameActionOptions) {
 
     try {
       // 2. 请求后端签名
-      options?.showToast?.("Requesting signature...");
+      options?.showToast?.("requestingSignature");
       const signatureResponse = await requestActionSignature(address, actionType, actionData);
 
       // 3. 调用合约
-      options?.showToast?.("Please confirm transaction in your wallet...");
+      options?.showToast?.("confirmTransaction");
 
       let txHash: any;
 
@@ -64,19 +65,19 @@ export function useGameAction(options?: GameActionOptions) {
       }
 
       // 4. 等待交易确认
-      options?.showToast?.("Transaction confirmed! Processing...");
+      options?.showToast?.("txConfirmedProcessing");
       console.log("Transaction hash:", txHash);
 
       // 等待几秒让后端处理事件
       await new Promise(resolve => setTimeout(resolve, 3000));
 
       // 5. 刷新用户状态
-      options?.showToast?.("Refreshing game state...");
+      options?.showToast?.("refreshingGameState");
       const newState = await getUserState(address);
 
       // 6. 成功回调 - 让调用方更新界面状态
       options?.onSuccess?.(newState);
-      options?.showToast?.("✅ Action completed!");
+      options?.showToast?.("actionCompleted");
 
       return newState;
     } catch (err) {
