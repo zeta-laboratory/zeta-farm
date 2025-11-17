@@ -293,6 +293,34 @@ function SocialFarmGame() {
   function setTool(t: string) {
     setSave((s: any) => ({ ...s, tool: t }));
   }
+  // Keyboard shortcuts: map number keys 1-7 to commonly used tools
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // ignore typing in inputs
+      const active = document.activeElement;
+      if (
+        active &&
+        (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || (active as HTMLElement).isContentEditable)
+      )
+        return;
+      const keyMap: Record<string, string> = {
+        "1": "harvest",
+        "2": "plant",
+        "3": "water",
+        "4": "weed",
+        "5": "pesticide",
+        "6": "fertilizer",
+        "7": "shovel",
+      };
+      const mapped = keyMap[e.key];
+      if (mapped) {
+        setTool(mapped);
+      }
+    };
+
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
   const currentCursor = useMemo(() => (save.tool === "default" ? "default" : cursorForTool(save.tool)), [save.tool]);
 
   useEffect(() => {
@@ -670,14 +698,17 @@ function SocialFarmGame() {
                 }}
                 onUnlock={unlockPlot}
               />
+              {/* Toolbox moved under the Board and laid out horizontally */}
+              <div className="mt-50">
+                <Toolbox
+                  current={save.tool as ToolType}
+                  setTool={setTool}
+                  fertilizer={save.fertilizer || 0}
+                  robotSubscribed={save.robotSubscribed || false}
+                />
+              </div>
             </div>
             <div className="md:col-span-3">
-              <Toolbox
-                current={save.tool as ToolType}
-                setTool={setTool}
-                fertilizer={save.fertilizer || 0}
-                robotSubscribed={save.robotSubscribed || false}
-              />
               <BagPanel
                 inventory={save.inventory}
                 fruits={save.fruits || {}}
@@ -1210,18 +1241,18 @@ function Toolbox({ current, setTool, fertilizer, robotSubscribed }: ToolboxProps
   return (
     <div className="bg-white/90 backdrop-blur rounded-2xl p-3 border shadow-sm">
       <div className="font-semibold mb-2">{t("toolbox")}</div>
-      <div className="grid grid-cols-6 gap-2">
+      <div className="flex gap-2 overflow-x-auto">
         {tools.map(tool => (
           <div key={tool.id} className="relative group">
             <button
               onClick={() => setTool(tool.id as ToolType)}
-              className={`w-full aspect-square rounded-xl border flex items-center justify-center text-2xl relative ${current === tool.id ? "border-emerald-400 bg-emerald-50" : "bg-white hover:bg-slate-50"}`}
+              className={`w-12 h-12 rounded-xl border flex items-center justify-center text-2xl shrink-0 ${current === tool.id ? "border-emerald-400 bg-emerald-50" : "bg-white hover:bg-slate-50"}`}
               title={t(tool.labelKey)}
             >
               {tool.emoji}
               {(tool.count || 0) > 0 && (
-                <div className="absolute bottom-0 left-0 right-0 h-1/5 bg-amber-800/80 flex items-center justify-center rounded-b-xl pointer-events-none z-20">
-                  <span className="text-[7px] font-bold text-white">{tool.count}</span>
+                <div className="absolute bottom-0 left-0 right-0 h-4 bg-amber-800/80 flex items-center justify-center rounded-b-xl pointer-events-none z-20">
+                  <span className="text-[9px] font-bold text-white">{tool.count}</span>
                 </div>
               )}
               {tool.subscribed && <div className="absolute top-0 right-0 text-emerald-600 text-xs">✓</div>}
