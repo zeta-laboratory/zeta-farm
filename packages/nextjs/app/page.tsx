@@ -293,14 +293,15 @@ function SocialFarmGame() {
   function setTool(t: string) {
     setSave((s: any) => ({ ...s, tool: t }));
   }
+  const currentCursor = useMemo(() => cursorForTool(save.tool), [save.tool]);
+
   useEffect(() => {
-    const c = cursorForTool(save.tool);
     const prev = document.body.style.cursor;
-    document.body.style.cursor = c;
+    document.body.style.cursor = currentCursor;
     return () => {
       document.body.style.cursor = prev;
     };
-  }, [save.tool]);
+  }, [currentCursor]);
 
   function selectSeed(id: string) {
     setSave((s: any) => ({ ...s, selectedSeed: id, tool: "plant" }));
@@ -638,6 +639,7 @@ function SocialFarmGame() {
             <div className="md:col-span-9">
               <Board
                 plots={save.plots}
+                currentCursor={currentCursor}
                 onPlotClick={p => {
                   if (!p.unlocked) return unlockPlot(p);
                   switch (save.tool) {
@@ -904,6 +906,7 @@ interface BoardProps {
   plots: Plot[];
   onPlotClick: (plot: Plot) => void;
   onUnlock: (plot: Plot) => void;
+  currentCursor?: string;
 }
 
 interface PlotTileProps {
@@ -911,6 +914,7 @@ interface PlotTileProps {
   onClick: () => void;
   onUnlock: () => void;
   posStyle?: React.CSSProperties;
+  currentCursor?: string;
 }
 
 interface BadgeProps {
@@ -936,7 +940,7 @@ interface BagPanelProps {
  * 子组件              *
  **********************/
 
-function Board({ plots, onPlotClick, onUnlock }: BoardProps) {
+function Board({ plots, onPlotClick, onUnlock, currentCursor }: BoardProps) {
   // Use absolute positioning to create a slanted/isometric layout closer to the
   // reference image. We compute left/top per-tile based on index, column and row.
   const cols = 6; // match previous layout for large screens
@@ -988,6 +992,7 @@ function Board({ plots, onPlotClick, onUnlock }: BoardProps) {
             posStyle={posStyle}
             onClick={() => onPlotClick(p)}
             onUnlock={() => onUnlock(p)}
+            currentCursor={currentCursor}
           />
         );
       })}
@@ -1095,7 +1100,7 @@ function Board({ plots, onPlotClick, onUnlock }: BoardProps) {
   );
 }
 
-function PlotTile({ plot, onClick, onUnlock, posStyle }: PlotTileProps) {
+function PlotTile({ plot, onClick, onUnlock, posStyle, currentCursor }: PlotTileProps) {
   const st = stageOf(plot);
   const timeNext = timeToNextStage(plot);
 
@@ -1126,6 +1131,7 @@ function PlotTile({ plot, onClick, onUnlock, posStyle }: PlotTileProps) {
             if (onUnlock) onUnlock();
           }}
           className="absolute inset-0 bg-transparent border-0"
+          style={{ cursor: currentCursor ?? "inherit" }}
         />
       </div>
     );
@@ -1174,6 +1180,7 @@ function PlotTile({ plot, onClick, onUnlock, posStyle }: PlotTileProps) {
       {/* invisible full-size click area */}
       <button
         className="absolute inset-0 bg-transparent border-0"
+        style={{ cursor: currentCursor ?? "inherit" }}
         onClick={e => {
           e.stopPropagation();
           onClick();
