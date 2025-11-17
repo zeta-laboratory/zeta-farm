@@ -1009,6 +1009,7 @@ function Board({ plots, onPlotClick, onUnlock }: BoardProps) {
           if (st === STAGE.SEED) return "/corns/seed.png";
           if (st === STAGE.SPROUT) return "/corns/sprout.png";
           if (st === STAGE.GROWING || st === STAGE.RIPE) return `/corns/${seed.id}.png`;
+          if (st === STAGE.WITHER) return "/corns/withered.png";
           return null;
         })();
 
@@ -1032,12 +1033,60 @@ function Board({ plots, onPlotClick, onUnlock }: BoardProps) {
               className="absolute left-1/2 pointer-events-none"
               style={{
                 bottom: "calc(var(--tile-h) * 0.48)",
-                transform: "translateX(-50%) translateX(5px) translateY(12px)",
+                transform: "translateX(-50%) translateX(5px) translateY(40px)",
               }}
             >
               {/* Using plain img intentionally for predictable game UI sizing */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={stageImageSrc} alt={seed ? seed.name : ""} className="w-28 h-28 object-contain" />
+            </div>
+          </div>
+        );
+      })}
+      {/* Label overlay layer: render name and short stage label above crops */}
+      {plots.map((p: Plot, idx: number) => {
+        const col = idx % cols;
+        const row = Math.floor(idx / cols);
+        const xStep = xSpacing;
+        const yStep = ySpacing;
+        const baseX = 60;
+        const baseY = 12;
+        const left = (col - row) * xStep + baseX;
+        const top = (col + row) * yStep + baseY - row * 6;
+
+        const seed = p.seedId ? SEEDS[p.seedId] : null;
+        const st = stageOf(p);
+        const timeNext = timeToNextStage(p);
+        const labelByStage: Record<string, string> = {
+          EMPTY: t("empty"),
+          SEED: t("seeding"),
+          SPROUT: t("sprout"),
+          GROWING: t("growing"),
+          RIPE: t("ripe"),
+          WITHER: t("wither"),
+        };
+
+        return (
+          <div
+            key={`label-${p.id}`}
+            style={{
+              position: "absolute",
+              left: `${left}px`,
+              top: `${top}px`,
+              width: `${tileW}px`,
+              height: `${tileH}px`,
+              pointerEvents: "none",
+              zIndex: 50,
+            }}
+          >
+            <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none" style={{ top: "12px" }}>
+              <div className="text-sm font-medium text-gray-500">{seed ? seed.name : t("empty")}</div>
+              <div className="text-xs text-gray-400 h-4">{seed ? labelByStage[st] : ""}</div>
+              {seed && st === STAGE.RIPE && (
+                <div className="text-[11px] text-amber-900/60 mt-1">
+                  {t("witherIn")}：{fmtTime(timeNext)}
+                </div>
+              )}
             </div>
           </div>
         );
@@ -1048,7 +1097,6 @@ function Board({ plots, onPlotClick, onUnlock }: BoardProps) {
 
 function PlotTile({ plot, onClick, onUnlock, posStyle }: PlotTileProps) {
   const st = stageOf(plot);
-  const seed = plot.seedId ? SEEDS[plot.seedId] : null;
   const timeNext = timeToNextStage(plot);
 
   // 如果未解锁，显示开垦界面（简洁样式）
@@ -1058,7 +1106,7 @@ function PlotTile({ plot, onClick, onUnlock, posStyle }: PlotTileProps) {
     return (
       <div style={posStyle} className="select-none relative">
         <img
-          src="/plots/plot-cube.png"
+          src="/plots/block.png"
           alt="locked-plot"
           className="w-full h-full object-contain opacity-60"
           style={{ filter: "grayscale(40%) brightness(0.95)" }}
@@ -1091,8 +1139,6 @@ function PlotTile({ plot, onClick, onUnlock, posStyle }: PlotTileProps) {
     r => !r.done && (Boolean((plot as any).pausedAt) || actualElapsed >= r.time),
   );
 
-  // (stage label and image are rendered in the Board layer overlay)
-
   return (
     <div
       style={{
@@ -1104,34 +1150,27 @@ function PlotTile({ plot, onClick, onUnlock, posStyle }: PlotTileProps) {
       className="select-none relative"
     >
       <img
-        src="/plots/plot-cube.png"
+        src="/plots/block.png"
         alt="plot tile"
         className="absolute top-0 left-0 w-full h-full object-contain pointer-events-none drop-shadow-md"
         style={{ transform: "translateY(10px)", objectPosition: "center bottom" }}
       />
-
-      {/* top label */}
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 text-white text-sm font-medium pointer-events-none">
-        {seed ? seed.name : t("empty")}
-      </div>
-
+      {/* top label and short stage label moved to Board overlay so they can be layered above crop images */}
       {/* seed / crop image moved to Board overlay to ensure crops render above all tiles */}
-
       {/* small status (time / badges) */}
-      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs text-white/80 pointer-events-none">
+      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs text-gray-400 pointer-events-none">
         {st === STAGE.RIPE ? t("harvest") : st === STAGE.EMPTY ? t("nothingToDo") : fmtTime(timeNext)}
-      </div>
-
+      </div>{" "}
       {/* badges (water/weeds/pests) */}
       {(plot.hasWeeds || plot.pests || hasActiveWaterReq || hasActiveWeedReq) && (
-        <div className="absolute bottom-12 left-0 right-0 flex gap-1 justify-center pointer-events-none z-20">
+        // Move badges lower and bring them above crop overlay (which uses z-40)
+        <div className="absolute bottom-6 left-0 right-0 flex gap-1 justify-center pointer-events-none z-50">
           {hasActiveWaterReq && <Badge text={t("needWater")} color="bg-sky-700" />}
           {hasActiveWeedReq && <Badge text={t("needWeed")} color="bg-lime-700" />}
           {plot.hasWeeds && !hasActiveWeedReq && <Badge text={t("weeds")} color="bg-lime-700" />}
           {plot.pests && <Badge text={t("pests")} color="bg-yellow-700" />}
         </div>
       )}
-
       {/* invisible full-size click area */}
       <button
         className="absolute inset-0 bg-transparent border-0"
