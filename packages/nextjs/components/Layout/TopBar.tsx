@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { hardhat } from "viem/chains";
+import { FaucetButton, RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
 import { LEVELS } from "~~/constants";
+import { useTargetNetwork } from "~~/hooks/scaffold-eth";
 import type { Language } from "~~/types";
 import { clamp } from "~~/utils/game";
 
@@ -27,6 +30,9 @@ export function TopBar({ coins, zeta, tickets, exp, level, lang, setLang, t }: T
   const expNeeded = nextNeed > exp ? nextNeed - exp : 0;
   const isMaxLevel = level >= LEVELS.length;
   const [langMenuOpen, setLangMenuOpen] = useState(false);
+
+  const { targetNetwork } = useTargetNetwork();
+  const isLocalNetwork = targetNetwork.id === hardhat.id;
 
   // 点击外部关闭下拉菜单
   useEffect(() => {
@@ -127,6 +133,10 @@ export function TopBar({ coins, zeta, tickets, exp, level, lang, setLang, t }: T
             )}
           </div>
           {/* Protect UI removed */}
+        </div>
+        <div className="flex items-center gap-2 ml-3">
+          <RainbowKitCustomConnectButton />
+          {isLocalNetwork && <FaucetButton />}
         </div>
       </div>
       <div className="h-1 bg-amber-200/40">
