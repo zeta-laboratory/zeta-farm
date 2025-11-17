@@ -293,7 +293,7 @@ function SocialFarmGame() {
   function setTool(t: string) {
     setSave((s: any) => ({ ...s, tool: t }));
   }
-  const currentCursor = useMemo(() => cursorForTool(save.tool), [save.tool]);
+  const currentCursor = useMemo(() => (save.tool === "default" ? "default" : cursorForTool(save.tool)), [save.tool]);
 
   useEffect(() => {
     const prev = document.body.style.cursor;
@@ -1196,6 +1196,7 @@ function Badge({ text, color }: BadgeProps) {
 
 function Toolbox({ current, setTool, fertilizer, robotSubscribed }: ToolboxProps) {
   const tools = [
+    { id: "default", labelKey: "defaultTool", emoji: "🖱️" },
     { id: "harvest", labelKey: "harvestTool", emoji: "🧺" },
     { id: "plant", labelKey: "plantTool", emoji: "🌱" },
     { id: "water", labelKey: "waterTool", emoji: "💧" },
