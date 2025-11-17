@@ -1392,11 +1392,12 @@ function ToastArea() {
             key={t.id}
             className="px-4 py-2 rounded-lg border shadow-lg text-sm text-white animate-toast"
             style={{
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              animation: isLatest ? "toastSlideIn 0.3s ease-out, toastFadeOut 0.4s ease-in 2.2s" : undefined,
+              // 使用与农场绿色相衬的渐变（浅绿 -> 深绿）
+              background: "linear-gradient(135deg, #34d399 0%, #059669 100%)",
+              animation: isLatest ? "toastFadeIn 0.3s ease-out, toastFadeOut 0.4s ease-in 2.2s" : undefined,
               backgroundImage: isLatest
-                ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%), linear-gradient(90deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 100%)"
-                : undefined,
+                ? "linear-gradient(135deg, #34d399 0%, #059669 100%), linear-gradient(90deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0) 100%)"
+                : "linear-gradient(135deg, #7dd3fc 0%, #38bdf8 100%), linear-gradient(90deg, rgba(255,255,255,0.14)",
               backgroundSize: isLatest ? "100%, 200%, 100%" : "100%",
             }}
           >
