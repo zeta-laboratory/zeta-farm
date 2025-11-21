@@ -18,9 +18,9 @@ import {
   SettingsPanel,
   ShopModal,
 } from "~~/components/Modals";
+import { LEVELS } from "~~/constants";
 // 导入常量配置
 import { I18N } from "~~/constants/i18n";
-import { LEVELS } from "~~/constants";
 // 导入 ID 映射工具
 import { convertBackendStateToFrontend, frontendSeedToBackend } from "~~/constants/idMapping";
 import { PETS } from "~~/constants/pets";
@@ -40,7 +40,6 @@ import {
   getLevel, // 地块相关
   getPlotUnlockCost,
   getPlotUnlockLevel,
-  hasCheckedInToday, // 时间相关
   now,
   stageOf,
   timeToNextStage,
@@ -718,12 +717,12 @@ function SocialFarmGame() {
                   onClick={() => setShopOpen(true)}
                   className="hover:opacity-80 transition-opacity cursor-pointer"
                 >
-                  <img 
-                    src="/places/shop.png" 
-                    alt="shop" 
+                  <img
+                    src="/places/shop.png"
+                    alt="shop"
                     className="w-full max-w-[84px] h-auto object-contain"
                     style={{
-                      animation: "breathe 2s ease-in-out infinite"
+                      animation: "breathe 2s ease-in-out infinite",
                     }}
                   />
                 </button>
@@ -731,12 +730,12 @@ function SocialFarmGame() {
                   onClick={() => setBankOpen(true)}
                   className="hover:opacity-80 transition-opacity cursor-pointer"
                 >
-                  <img 
-                    src="/places/bank.png" 
-                    alt="bank" 
+                  <img
+                    src="/places/bank.png"
+                    alt="bank"
                     className="w-full max-w-[84px] h-auto object-contain"
                     style={{
-                      animation: "breathe 2s ease-in-out infinite"
+                      animation: "breathe 2s ease-in-out infinite",
                     }}
                   />
                 </button>
@@ -744,12 +743,12 @@ function SocialFarmGame() {
                   onClick={() => setGluckOpen(true)}
                   className="hover:opacity-80 transition-opacity cursor-pointer"
                 >
-                  <img 
-                    src="/places/gluck.png" 
-                    alt="gluck" 
+                  <img
+                    src="/places/gluck.png"
+                    alt="gluck"
                     className="w-full max-w-[84px] h-auto object-contain"
                     style={{
-                      animation: "breathe 2s ease-in-out infinite"
+                      animation: "breathe 2s ease-in-out infinite",
                     }}
                   />
                 </button>
@@ -757,26 +756,23 @@ function SocialFarmGame() {
                   onClick={() => setCheckinOpen(true)}
                   className="hover:opacity-80 transition-opacity cursor-pointer"
                 >
-                  <img 
-                    src="/places/calendar.png" 
-                    alt="checkin" 
-                    className="w-full max-w-[84px] h-auto object-contain"
-                    style={{
-                      animation: "breathe 2s ease-in-out infinite"
-                    }}
-                  />
-                </button>
-                <div
-                  className="relative group cursor-not-allowed"
-                  title="敬请期待S2赛季"
-                >
-                  <img 
-                    src="/places/collect.png" 
-                    alt="letterCollection" 
+                  <img
+                    src="/places/calendar.png"
+                    alt="checkin"
                     className="w-full max-w-[84px] h-auto object-contain"
                     style={{
                       animation: "breathe 2s ease-in-out infinite",
-                      opacity: 0.35
+                    }}
+                  />
+                </button>
+                <div className="relative group cursor-not-allowed" title="敬请期待S2赛季">
+                  <img
+                    src="/places/collect.png"
+                    alt="letterCollection"
+                    className="w-full max-w-[84px] h-auto object-contain"
+                    style={{
+                      animation: "breathe 2s ease-in-out infinite",
+                      opacity: 0.35,
                     }}
                   />
                   <div className="pointer-events-none absolute z-10 hidden group-hover:block left-1/2 -translate-x-1/2 mt-2 w-32 p-2 rounded-lg border bg-white shadow-lg text-center">
@@ -784,7 +780,9 @@ function SocialFarmGame() {
                   </div>
                 </div>
               </div>
-              <style dangerouslySetInnerHTML={{__html: `
+              <style
+                dangerouslySetInnerHTML={{
+                  __html: `
                 @keyframes breathe {
                   0%, 100% {
                     transform: scale(1);
@@ -793,7 +791,9 @@ function SocialFarmGame() {
                     transform: scale(1.05);
                   }
                 }
-              `}} />
+              `,
+                }}
+              />
               <BagPanel
                 inventory={save.inventory}
                 fruits={save.fruits || {}}
@@ -1204,7 +1204,10 @@ function PlotTile({ plot, onClick, onUnlock, posStyle, currentCursor }: PlotTile
           className="w-full h-full object-contain opacity-60"
           style={{ filter: "grayscale(40%) brightness(0.95)" }}
         />
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-white/90 pointer-events-none" style={{ fontSize: "75%" }}>
+        <div
+          className="absolute inset-0 flex flex-col items-center justify-center text-white/90 pointer-events-none"
+          style={{ fontSize: "75%" }}
+        >
           <div className="flex items-center justify-center">
             <span className="text-lg">🔒</span>
             <span className="text-[9px] ml-1">
@@ -1289,7 +1292,7 @@ interface StatsPanelProps {
   t: (key: string) => string;
 }
 
-function StatsPanel({ zeta, tickets, coins, exp, level, t }: StatsPanelProps) {
+function StatsPanel({ zeta, tickets, coins, exp, level }: StatsPanelProps) {
   const nextLvl = clamp(level, 1, LEVELS.length);
   const curNeed = LEVELS[nextLvl - 1] ?? 0;
   const nextNeed = LEVELS[nextLvl] ?? LEVELS[LEVELS.length - 1];
@@ -1302,17 +1305,19 @@ function StatsPanel({ zeta, tickets, coins, exp, level, t }: StatsPanelProps) {
         {/* 左侧：种地者头像 */}
         <div className="flex-shrink-0">
           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-2xl shadow-md relative overflow-hidden">
-            <div 
+            <div
               className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent"
               style={{
                 animation: "shine 3s ease-in-out infinite",
-                transform: "translateX(-100%) skewX(-15deg)"
+                transform: "translateX(-100%) skewX(-15deg)",
               }}
             ></div>
             👨‍🌾
           </div>
         </div>
-        <style dangerouslySetInnerHTML={{__html: `
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
           @keyframes shine {
             0% {
               transform: translateX(-100%) skewX(-15deg);
@@ -1324,7 +1329,9 @@ function StatsPanel({ zeta, tickets, coins, exp, level, t }: StatsPanelProps) {
               transform: translateX(200%) skewX(-15deg);
             }
           }
-        `}} />
+        `,
+          }}
+        />
         {/* 右侧：三行内容 */}
         <div className="flex flex-col gap-2 flex-1">
           {/* 第一行：经验值进度条 */}
@@ -1337,9 +1344,7 @@ function StatsPanel({ zeta, tickets, coins, exp, level, t }: StatsPanelProps) {
             </div>
           )}
           {/* 第二行：Lv.X */}
-          <div className="text-xs text-slate-600 font-medium">
-            Lv.{level}
-          </div>
+          <div className="text-xs text-slate-600 font-medium">Lv.{level}</div>
           {/* 第三行：Ζ 0 🎟️ 0 💰0 */}
           <div className="flex items-center gap-3 text-sm">
             <div className="flex items-center gap-1.5">
@@ -1373,7 +1378,14 @@ function Toolbox({ current, setTool, fertilizer, robotSubscribed }: ToolboxProps
     { id: "water", labelKey: "waterTool", emoji: "💧", image: "/tools/water.png", shortcut: "4" },
     { id: "weed", labelKey: "weedTool", emoji: "🌿", image: "/tools/weed.png", shortcut: "5" },
     { id: "pesticide", labelKey: "pesticideTool", emoji: "🪲", image: "/tools/pesticide.png", shortcut: "6" },
-    { id: "fertilizer", labelKey: "fertilizerTool", emoji: "🌾", image: "/tools/fertiler.png", count: fertilizer || 0, shortcut: "7" },
+    {
+      id: "fertilizer",
+      labelKey: "fertilizerTool",
+      emoji: "🌾",
+      image: "/tools/fertiler.png",
+      count: fertilizer || 0,
+      shortcut: "7",
+    },
     { id: "shovel", labelKey: "shovelTool", emoji: "🪓", image: "/tools/axe.png", shortcut: "8" },
     { id: "robot", labelKey: "robotTool", emoji: "🤖", image: null, subscribed: robotSubscribed, shortcut: "9" },
     { id: "pet", labelKey: "petTool", emoji: "🐶", image: null, shortcut: "0" },
@@ -1423,11 +1435,14 @@ function Toolbox({ current, setTool, fertilizer, robotSubscribed }: ToolboxProps
   );
 }
 
-function BagPanel({ inventory, fruits, selected, onSelect }: BagPanelProps) {
+function BagPanel({ inventory, selected, onSelect }: BagPanelProps) {
   const entries = Object.values(SEEDS);
 
   return (
-    <div className="bg-white/90 backdrop-blur rounded-2xl p-2 border shadow-sm mt-3 -mr-3" style={{ marginLeft: "2cm" }}>
+    <div
+      className="bg-white/90 backdrop-blur rounded-2xl p-2 border shadow-sm mt-3 -mr-3"
+      style={{ marginLeft: "2cm" }}
+    >
       {/* 种子区域 - 3列显示，只显示图标 */}
       <div>
         <div className="text-xs text-slate-500 mb-1">快速种植</div>
