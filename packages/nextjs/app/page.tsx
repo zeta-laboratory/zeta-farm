@@ -717,30 +717,34 @@ function SocialFarmGame() {
               />
               <div className="grid grid-cols-2 gap-2 mt-3">
                 <button
-                  className="w-full text-sm px-3 py-2 rounded-xl border bg-white/90 backdrop-blur hover:bg-white"
+                  className="w-full text-sm px-3 py-2 rounded-xl border bg-white/90 backdrop-blur hover:bg-white flex items-center justify-center gap-2"
                   onClick={() => setShopOpen(true)}
                 >
-                  🛒 {t("shop")}
+                  <img src="/places/shop.png" alt="shop" className="w-6 h-6 inline-block" />
+                  {t("shop")}
                 </button>
                 <button
-                  className="w-full text-sm px-3 py-2 rounded-xl border bg-white/90 backdrop-blur hover:bg-white"
+                  className="w-full text-sm px-3 py-2 rounded-xl border bg-white/90 backdrop-blur hover:bg-white flex items-center justify-center gap-2"
                   onClick={() => setBankOpen(true)}
                 >
-                  🏦 {t("bank")}
+                  <img src="/places/bank.png" alt="bank" className="w-6 h-6 inline-block" />
+                  {t("bank")}
                 </button>
               </div>
               <div className="grid grid-cols-2 gap-2 mt-2">
                 <button
-                  className="w-full text-sm px-3 py-2 rounded-xl border bg-white/90 backdrop-blur hover:bg-white"
+                  className="w-full text-sm px-3 py-2 rounded-xl border bg-white/90 backdrop-blur hover:bg-white flex items-center justify-center gap-2"
                   onClick={() => setGluckOpen(true)}
                 >
-                  🎰 Gluck
+                  <img src="/places/gluck.png" alt="gluck" className="w-6 h-6 inline-block" />
+                  Gluck
                 </button>
                 <button
-                  className={`w-full text-sm px-3 py-2 rounded-xl border backdrop-blur hover:bg-white ${hasCheckedInToday(save.checkinLastDate) ? "bg-emerald-50 border-emerald-200" : "bg-white"}`}
+                  className={`w-full text-sm px-3 py-2 rounded-xl border backdrop-blur hover:bg-white flex items-center justify-center gap-2 ${hasCheckedInToday(save.checkinLastDate) ? "bg-emerald-50 border-emerald-200" : "bg-white"}`}
                   onClick={() => setCheckinOpen(true)}
                 >
-                  📅 {t("checkin")}
+                  <img src="/places/calendar.png" alt="calendar" className="w-6 h-6 inline-block" />
+                  {t("checkin")}
                 </button>
               </div>
               <div className="grid grid-cols-1 gap-2 mt-2">
@@ -1227,16 +1231,16 @@ function Badge({ text, color }: BadgeProps) {
 
 function Toolbox({ current, setTool, fertilizer, robotSubscribed }: ToolboxProps) {
   const tools = [
-    { id: "default", labelKey: "defaultTool", emoji: "🖱️" },
-    { id: "harvest", labelKey: "harvestTool", emoji: "🧺" },
-    { id: "plant", labelKey: "plantTool", emoji: "🌱" },
-    { id: "water", labelKey: "waterTool", emoji: "💧" },
-    { id: "weed", labelKey: "weedTool", emoji: "🌿" },
-    { id: "pesticide", labelKey: "pesticideTool", emoji: "🪲" },
-    { id: "fertilizer", labelKey: "fertilizerTool", emoji: "🌾", count: fertilizer || 0 },
-    { id: "shovel", labelKey: "shovelTool", emoji: "🪓" },
-    { id: "robot", labelKey: "robotTool", emoji: "🤖", subscribed: robotSubscribed },
-    { id: "pet", labelKey: "petTool", emoji: "🐶" },
+    { id: "default", labelKey: "defaultTool", emoji: "🖱️", image: null },
+    { id: "harvest", labelKey: "harvestTool", emoji: "🧺", image: null },
+    { id: "plant", labelKey: "plantTool", emoji: "🌱", image: null },
+    { id: "water", labelKey: "waterTool", emoji: "💧", image: "/tools/water.png" },
+    { id: "weed", labelKey: "weedTool", emoji: "🌿", image: "/tools/weed.png" },
+    { id: "pesticide", labelKey: "pesticideTool", emoji: "🪲", image: "/tools/pesticide.png" },
+    { id: "fertilizer", labelKey: "fertilizerTool", emoji: "🌾", image: "/tools/fertiler.png", count: fertilizer || 0 },
+    { id: "shovel", labelKey: "shovelTool", emoji: "🪓", image: "/tools/axe.png" },
+    { id: "robot", labelKey: "robotTool", emoji: "🤖", image: null, subscribed: robotSubscribed },
+    { id: "pet", labelKey: "petTool", emoji: "🐶", image: null },
   ];
   return (
     <div className="bg-white/90 backdrop-blur rounded-2xl p-3 border shadow-sm">
@@ -1249,7 +1253,11 @@ function Toolbox({ current, setTool, fertilizer, robotSubscribed }: ToolboxProps
               className={`w-12 h-12 rounded-xl border flex items-center justify-center text-2xl shrink-0 ${current === tool.id ? "border-emerald-400 bg-emerald-50" : "bg-white hover:bg-slate-50"}`}
               title={t(tool.labelKey)}
             >
-              {tool.emoji}
+              {tool.image ? (
+                <img src={tool.image} alt={t(tool.labelKey)} className="w-8 h-8 object-contain" />
+              ) : (
+                tool.emoji
+              )}
               {(tool.count || 0) > 0 && (
                 <div className="absolute bottom-0 left-0 right-0 h-4 bg-amber-800/80 flex items-center justify-center rounded-b-xl pointer-events-none z-20">
                   <span className="text-[9px] font-bold text-white">{tool.count}</span>
@@ -1259,7 +1267,12 @@ function Toolbox({ current, setTool, fertilizer, robotSubscribed }: ToolboxProps
             </button>
             <div className="pointer-events-none absolute z-10 hidden group-hover:block left-1/2 -translate-x-1/2 mt-1 w-28 p-1.5 rounded-lg border bg-white shadow text-center">
               <div className="text-xs text-slate-700">
-                {tool.emoji} {t(tool.labelKey)}
+                {tool.image ? (
+                  <img src={tool.image} alt={t(tool.labelKey)} className="w-4 h-4 object-contain inline-block mr-1" />
+                ) : (
+                  tool.emoji
+                )}{" "}
+                {t(tool.labelKey)}
               </div>
             </div>
           </div>
