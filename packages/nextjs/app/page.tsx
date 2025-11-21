@@ -20,6 +20,7 @@ import {
 } from "~~/components/Modals";
 // 导入常量配置
 import { I18N } from "~~/constants/i18n";
+import { LEVELS } from "~~/constants";
 // 导入 ID 映射工具
 import { convertBackendStateToFrontend, frontendSeedToBackend } from "~~/constants/idMapping";
 import { PETS } from "~~/constants/pets";
@@ -33,6 +34,7 @@ import type { CurrencyType, GameSave, Language, Plot, ToolType } from "~~/types"
 import {
   // 作物阶段相关
   STAGE, // UI 相关
+  clamp,
   cursorForTool, // 签到相关
   fmtTime, // 等级相关
   getLevel, // 地块相关
@@ -293,7 +295,7 @@ function SocialFarmGame() {
   function setTool(t: string) {
     setSave((s: any) => ({ ...s, tool: t }));
   }
-  // Keyboard shortcuts: map number keys 1-7 to commonly used tools
+  // Keyboard shortcuts: map number keys 1-9, 0 to tools
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       // ignore typing in inputs
@@ -304,16 +306,20 @@ function SocialFarmGame() {
       )
         return;
       const keyMap: Record<string, string> = {
-        "1": "harvest",
-        "2": "plant",
-        "3": "water",
-        "4": "weed",
-        "5": "pesticide",
-        "6": "fertilizer",
-        "7": "shovel",
+        "1": "default",
+        "2": "harvest",
+        "3": "plant",
+        "4": "water",
+        "5": "weed",
+        "6": "pesticide",
+        "7": "fertilizer",
+        "8": "shovel",
+        "9": "robot",
+        "0": "pet",
       };
       const mapped = keyMap[e.key];
       if (mapped) {
+        e.preventDefault();
         setTool(mapped);
       }
     };
@@ -663,8 +669,14 @@ function SocialFarmGame() {
         />
         <Banner t={t} />
         <div className="max-w-6xl mx-auto px-3 pb-24">
-          <div className="grid md:grid-cols-12 gap-3 mt-3">
-            <div className="md:col-span-9">
+          <div className="grid md:grid-cols-12 gap-3 mt-3 relative">
+            <div className="absolute top-0 z-50" style={{ left: "-3cm" }}>
+              <StatsPanel zeta={save.zeta} tickets={save.tickets} coins={save.coins} exp={save.exp} level={lvl} t={t} />
+            </div>
+            <div className="absolute top-0 z-50" style={{ left: "-3cm", top: "200px" }}>
+              <SettingsPanel onReset={resetSave} language={langRef.current} />
+            </div>
+            <div className="md:col-span-9 relative" style={{ marginLeft: "6cm" }}>
               <Board
                 plots={save.plots}
                 currentCursor={currentCursor}
@@ -698,65 +710,106 @@ function SocialFarmGame() {
                 }}
                 onUnlock={unlockPlot}
               />
-              {/* Toolbox moved under the Board and laid out horizontally */}
-              <div className="mt-50">
-                <Toolbox
-                  current={save.tool as ToolType}
-                  setTool={setTool}
-                  fertilizer={save.fertilizer || 0}
-                  robotSubscribed={save.robotSubscribed || false}
-                />
-              </div>
             </div>
             <div className="md:col-span-3">
+              {/* 商店、银行、Gluck、每日签到和集字游戏图片 - 放在背包上方 */}
+              <div className="mb-3 flex justify-center gap-3" style={{ marginLeft: "-1cm" }}>
+                <button
+                  onClick={() => setShopOpen(true)}
+                  className="hover:opacity-80 transition-opacity cursor-pointer"
+                >
+                  <img 
+                    src="/places/shop.png" 
+                    alt="shop" 
+                    className="w-full max-w-[84px] h-auto object-contain"
+                    style={{
+                      animation: "breathe 2s ease-in-out infinite"
+                    }}
+                  />
+                </button>
+                <button
+                  onClick={() => setBankOpen(true)}
+                  className="hover:opacity-80 transition-opacity cursor-pointer"
+                >
+                  <img 
+                    src="/places/bank.png" 
+                    alt="bank" 
+                    className="w-full max-w-[84px] h-auto object-contain"
+                    style={{
+                      animation: "breathe 2s ease-in-out infinite"
+                    }}
+                  />
+                </button>
+                <button
+                  onClick={() => setGluckOpen(true)}
+                  className="hover:opacity-80 transition-opacity cursor-pointer"
+                >
+                  <img 
+                    src="/places/gluck.png" 
+                    alt="gluck" 
+                    className="w-full max-w-[84px] h-auto object-contain"
+                    style={{
+                      animation: "breathe 2s ease-in-out infinite"
+                    }}
+                  />
+                </button>
+                <button
+                  onClick={() => setCheckinOpen(true)}
+                  className="hover:opacity-80 transition-opacity cursor-pointer"
+                >
+                  <img 
+                    src="/places/calendar.png" 
+                    alt="checkin" 
+                    className="w-full max-w-[84px] h-auto object-contain"
+                    style={{
+                      animation: "breathe 2s ease-in-out infinite"
+                    }}
+                  />
+                </button>
+                <div
+                  className="relative group cursor-not-allowed"
+                  title="敬请期待S2赛季"
+                >
+                  <img 
+                    src="/places/collect.png" 
+                    alt="letterCollection" 
+                    className="w-full max-w-[84px] h-auto object-contain"
+                    style={{
+                      animation: "breathe 2s ease-in-out infinite",
+                      opacity: 0.35
+                    }}
+                  />
+                  <div className="pointer-events-none absolute z-10 hidden group-hover:block left-1/2 -translate-x-1/2 mt-2 w-32 p-2 rounded-lg border bg-white shadow-lg text-center">
+                    <div className="text-xs text-slate-700">敬请期待S2赛季</div>
+                  </div>
+                </div>
+              </div>
+              <style dangerouslySetInnerHTML={{__html: `
+                @keyframes breathe {
+                  0%, 100% {
+                    transform: scale(1);
+                  }
+                  50% {
+                    transform: scale(1.05);
+                  }
+                }
+              `}} />
               <BagPanel
                 inventory={save.inventory}
                 fruits={save.fruits || {}}
                 selected={save.selectedSeed}
                 onSelect={selectSeed}
               />
-              <div className="grid grid-cols-2 gap-2 mt-3">
-                <button
-                  className="w-full text-sm px-3 py-2 rounded-xl border bg-white/90 backdrop-blur hover:bg-white flex items-center justify-center gap-2"
-                  onClick={() => setShopOpen(true)}
-                >
-                  <img src="/places/shop.png" alt="shop" className="w-6 h-6 inline-block" />
-                  {t("shop")}
-                </button>
-                <button
-                  className="w-full text-sm px-3 py-2 rounded-xl border bg-white/90 backdrop-blur hover:bg-white flex items-center justify-center gap-2"
-                  onClick={() => setBankOpen(true)}
-                >
-                  <img src="/places/bank.png" alt="bank" className="w-6 h-6 inline-block" />
-                  {t("bank")}
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                <button
-                  className="w-full text-sm px-3 py-2 rounded-xl border bg-white/90 backdrop-blur hover:bg-white flex items-center justify-center gap-2"
-                  onClick={() => setGluckOpen(true)}
-                >
-                  <img src="/places/gluck.png" alt="gluck" className="w-6 h-6 inline-block" />
-                  Gluck
-                </button>
-                <button
-                  className={`w-full text-sm px-3 py-2 rounded-xl border backdrop-blur hover:bg-white flex items-center justify-center gap-2 ${hasCheckedInToday(save.checkinLastDate) ? "bg-emerald-50 border-emerald-200" : "bg-white"}`}
-                  onClick={() => setCheckinOpen(true)}
-                >
-                  <img src="/places/calendar.png" alt="calendar" className="w-6 h-6 inline-block" />
-                  {t("checkin")}
-                </button>
-              </div>
-              <div className="grid grid-cols-1 gap-2 mt-2">
-                <button
-                  className="w-full text-sm px-3 py-2 rounded-xl border bg-white/90 backdrop-blur hover:bg-white"
-                  onClick={() => setLetterCollectionOpen(true)}
-                >
-                  {t("letterCollection")}
-                </button>
-              </div>
-              <SettingsPanel onReset={resetSave} language={langRef.current} />
             </div>
+          </div>
+          {/* Toolbox moved outside the grid to prevent it from moving with the land container */}
+          <div className="mt-[3cm] flex justify-center">
+            <Toolbox
+              current={save.tool as ToolType}
+              setTool={setTool}
+              fertilizer={save.fertilizer || 0}
+              robotSubscribed={save.robotSubscribed || false}
+            />
           </div>
         </div>
         <ShopModal
@@ -1120,7 +1173,7 @@ function Board({ plots, onPlotClick, onUnlock, currentCursor }: BoardProps) {
             }}
           >
             <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none" style={{ top: "12px" }}>
-              <div className="text-sm font-medium text-gray-500">{seed ? seed.name : t("empty")}</div>
+              <div className="text-sm font-medium text-gray-500">{seed ? seed.name : ""}</div>
               <div className="text-xs text-gray-400 h-4">{seed ? labelByStage[st] : ""}</div>
               {seed && st === STAGE.RIPE && (
                 <div className="text-[11px] text-amber-900/60 mt-1">
@@ -1151,12 +1204,14 @@ function PlotTile({ plot, onClick, onUnlock, posStyle, currentCursor }: PlotTile
           className="w-full h-full object-contain opacity-60"
           style={{ filter: "grayscale(40%) brightness(0.95)" }}
         />
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-sm text-white/90 pointer-events-none">
-          <div className="text-2xl">🔒</div>
-          <div className="mt-1 text-xs">
-            {t("needLevel")} {requiredLevel}
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-white/90 pointer-events-none" style={{ fontSize: "75%" }}>
+          <div className="flex items-center justify-center">
+            <span className="text-lg">🔒</span>
+            <span className="text-[9px] ml-1">
+              {t("needLevel")} {requiredLevel}
+            </span>
           </div>
-          <div className="mt-1 text-xs">
+          <div className="mt-0 text-[9px] text-center">
             {t("unlockCost")} {unlockCost} {t("coins")}
           </div>
         </div>
@@ -1200,7 +1255,7 @@ function PlotTile({ plot, onClick, onUnlock, posStyle, currentCursor }: PlotTile
       {/* seed / crop image moved to Board overlay to ensure crops render above all tiles */}
       {/* small status (time / badges) */}
       <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs text-gray-400 pointer-events-none">
-        {st === STAGE.RIPE ? t("harvest") : st === STAGE.EMPTY ? t("nothingToDo") : fmtTime(timeNext)}
+        {st === STAGE.RIPE ? t("harvest") : st === STAGE.EMPTY ? "" : fmtTime(timeNext)}
       </div>{" "}
       {/* badges (water/weeds/pests) */}
       {(plot.hasWeeds || plot.pests || hasActiveWaterReq || hasActiveWeedReq) && (
@@ -1225,34 +1280,120 @@ function PlotTile({ plot, onClick, onUnlock, posStyle, currentCursor }: PlotTile
   );
 }
 
+interface StatsPanelProps {
+  zeta: number;
+  tickets: number;
+  coins: number;
+  exp: number;
+  level: number;
+  t: (key: string) => string;
+}
+
+function StatsPanel({ zeta, tickets, coins, exp, level, t }: StatsPanelProps) {
+  const nextLvl = clamp(level, 1, LEVELS.length);
+  const curNeed = LEVELS[nextLvl - 1] ?? 0;
+  const nextNeed = LEVELS[nextLvl] ?? LEVELS[LEVELS.length - 1];
+  const prog = LEVELS[nextLvl] ? clamp((exp - curNeed) / (nextNeed - curNeed), 0, 1) : 1;
+  const isMaxLevel = level >= LEVELS.length;
+
+  return (
+    <div className="bg-amber-900/40 backdrop-blur-xl rounded-xl px-3 py-2 border border-white/30 shadow-lg">
+      <div className="flex items-center gap-3">
+        {/* 左侧：种地者头像 */}
+        <div className="flex-shrink-0">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-2xl shadow-md relative overflow-hidden">
+            <div 
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent"
+              style={{
+                animation: "shine 3s ease-in-out infinite",
+                transform: "translateX(-100%) skewX(-15deg)"
+              }}
+            ></div>
+            👨‍🌾
+          </div>
+        </div>
+        <style dangerouslySetInnerHTML={{__html: `
+          @keyframes shine {
+            0% {
+              transform: translateX(-100%) skewX(-15deg);
+            }
+            50% {
+              transform: translateX(200%) skewX(-15deg);
+            }
+            100% {
+              transform: translateX(200%) skewX(-15deg);
+            }
+          }
+        `}} />
+        {/* 右侧：三行内容 */}
+        <div className="flex flex-col gap-2 flex-1">
+          {/* 第一行：经验值进度条 */}
+          {!isMaxLevel && (
+            <div className="h-2 bg-slate-200/80 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all duration-300"
+                style={{ width: `${prog * 100}%` }}
+              />
+            </div>
+          )}
+          {/* 第二行：Lv.X */}
+          <div className="text-xs text-slate-600 font-medium">
+            Lv.{level}
+          </div>
+          {/* 第三行：Ζ 0 🎟️ 0 💰0 */}
+          <div className="flex items-center gap-3 text-sm">
+            <div className="flex items-center gap-1.5">
+              <span className="text-cyan-600 font-semibold">Ζ</span>
+              <span className="text-slate-800 font-bold">{zeta}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-pink-600">🎟️</span>
+              <span className="text-slate-800 font-bold">{tickets}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-amber-600">💰</span>
+              <span className="text-slate-800 font-bold">{coins}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Badge({ text, color }: BadgeProps) {
   return <div className={`text-[10px] text-white px-1.5 py-0.5 rounded ${color}`}>{text}</div>;
 }
 
 function Toolbox({ current, setTool, fertilizer, robotSubscribed }: ToolboxProps) {
   const tools = [
-    { id: "default", labelKey: "defaultTool", emoji: "🖱️", image: null },
-    { id: "harvest", labelKey: "harvestTool", emoji: "🧺", image: null },
-    { id: "plant", labelKey: "plantTool", emoji: "🌱", image: null },
-    { id: "water", labelKey: "waterTool", emoji: "💧", image: "/tools/water.png" },
-    { id: "weed", labelKey: "weedTool", emoji: "🌿", image: "/tools/weed.png" },
-    { id: "pesticide", labelKey: "pesticideTool", emoji: "🪲", image: "/tools/pesticide.png" },
-    { id: "fertilizer", labelKey: "fertilizerTool", emoji: "🌾", image: "/tools/fertiler.png", count: fertilizer || 0 },
-    { id: "shovel", labelKey: "shovelTool", emoji: "🪓", image: "/tools/axe.png" },
-    { id: "robot", labelKey: "robotTool", emoji: "🤖", image: null, subscribed: robotSubscribed },
-    { id: "pet", labelKey: "petTool", emoji: "🐶", image: null },
+    { id: "default", labelKey: "defaultTool", emoji: "🖱️", image: null, shortcut: "1" },
+    { id: "harvest", labelKey: "harvestTool", emoji: "🧺", image: null, shortcut: "2" },
+    { id: "plant", labelKey: "plantTool", emoji: "🌱", image: null, shortcut: "3" },
+    { id: "water", labelKey: "waterTool", emoji: "💧", image: "/tools/water.png", shortcut: "4" },
+    { id: "weed", labelKey: "weedTool", emoji: "🌿", image: "/tools/weed.png", shortcut: "5" },
+    { id: "pesticide", labelKey: "pesticideTool", emoji: "🪲", image: "/tools/pesticide.png", shortcut: "6" },
+    { id: "fertilizer", labelKey: "fertilizerTool", emoji: "🌾", image: "/tools/fertiler.png", count: fertilizer || 0, shortcut: "7" },
+    { id: "shovel", labelKey: "shovelTool", emoji: "🪓", image: "/tools/axe.png", shortcut: "8" },
+    { id: "robot", labelKey: "robotTool", emoji: "🤖", image: null, subscribed: robotSubscribed, shortcut: "9" },
+    { id: "pet", labelKey: "petTool", emoji: "🐶", image: null, shortcut: "0" },
   ];
   return (
-    <div className="bg-white/90 backdrop-blur rounded-2xl p-3 border shadow-sm">
-      <div className="font-semibold mb-2">{t("toolbox")}</div>
+    <div className="bg-white/20 backdrop-blur-xl rounded-3xl p-3 shadow-lg">
+      <div className="font-semibold mb-2 hidden">{t("toolbox")}</div>
       <div className="flex gap-2 overflow-x-auto">
         {tools.map(tool => (
           <div key={tool.id} className="relative group">
             <button
               onClick={() => setTool(tool.id as ToolType)}
-              className={`w-12 h-12 rounded-xl border flex items-center justify-center text-2xl shrink-0 ${current === tool.id ? "border-emerald-400 bg-emerald-50" : "bg-white hover:bg-slate-50"}`}
+              className={`w-12 h-12 rounded-xl border flex items-center justify-center text-2xl shrink-0 transition-transform duration-300 ${current === tool.id ? "border-emerald-400 bg-emerald-50/30" : "bg-transparent hover:bg-white/20"}`}
+              style={current === tool.id ? { transform: "scale(1.2)" } : {}}
               title={t(tool.labelKey)}
             >
+              {/* 快捷键数字显示在左上角 */}
+              <div className="absolute top-0 left-0 bg-slate-800/80 text-white text-[10px] font-bold w-4 h-4 rounded-br rounded-tl flex items-center justify-center z-30">
+                {tool.shortcut}
+              </div>
               {tool.image ? (
                 <img src={tool.image} alt={t(tool.labelKey)} className="w-8 h-8 object-contain" />
               ) : (
@@ -1286,12 +1427,11 @@ function BagPanel({ inventory, fruits, selected, onSelect }: BagPanelProps) {
   const entries = Object.values(SEEDS);
 
   return (
-    <div className="bg-white/90 backdrop-blur rounded-2xl p-3 border shadow-sm mt-3">
-      <div className="font-semibold mb-2">{t("bag")}</div>
-      {/* 种子区域 */}
-      <div className="mb-3">
-        <div className="text-xs text-slate-500 mb-1">{t("seeds")}</div>
-        <div className="grid grid-cols-6 gap-2">
+    <div className="bg-white/90 backdrop-blur rounded-2xl p-2 border shadow-sm mt-3 -mr-3" style={{ marginLeft: "2cm" }}>
+      {/* 种子区域 - 3列显示，只显示图标 */}
+      <div>
+        <div className="text-xs text-slate-500 mb-1">快速种植</div>
+        <div className="grid grid-cols-3 gap-1.5">
           {entries.map(s => {
             const count = inventory[s.id] ?? 0;
             const hasCount = count > 0;
@@ -1300,7 +1440,7 @@ function BagPanel({ inventory, fruits, selected, onSelect }: BagPanelProps) {
                 <button
                   onClick={() => hasCount && onSelect(s.id)}
                   disabled={!hasCount}
-                  className={`w-full aspect-square rounded-xl border flex items-center justify-center text-2xl relative overflow-hidden ${
+                  className={`w-12 h-12 rounded-xl border flex items-center justify-center relative overflow-hidden ${
                     !hasCount
                       ? "bg-gray-100 opacity-50 border-gray-200 cursor-not-allowed"
                       : selected === s.id
@@ -1316,8 +1456,8 @@ function BagPanel({ inventory, fruits, selected, onSelect }: BagPanelProps) {
                     className={`relative z-10 ${!hasCount ? "opacity-40" : ""} w-8 h-8 object-contain`}
                   />
                   {count > 0 && (
-                    <div className="absolute bottom-0 left-0 right-0 h-1/5 bg-amber-800/80 flex items-center justify-center rounded-b-xl pointer-events-none z-20">
-                      <span className="text-[7px] font-bold text-white">{count}</span>
+                    <div className="absolute top-1 right-1 bg-amber-800/90 rounded-full w-5 h-5 flex items-center justify-center pointer-events-none z-20">
+                      <span className="text-[9px] font-bold text-white">{count}</span>
                     </div>
                   )}
                 </button>
@@ -1333,47 +1473,6 @@ function BagPanel({ inventory, fruits, selected, onSelect }: BagPanelProps) {
                     {t("mature")} {fmtTime(s.stages[2])}，{t("witherAfter")} {fmtTime(s.witherAfter)} {t("after")}
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-      {/* 果实区域 */}
-      <div>
-        <div className="text-xs text-slate-500 mb-1">{t("fruits")}</div>
-        <div className="grid grid-cols-6 gap-2">
-          {entries.map(s => {
-            const count = fruits[s.id] ?? 0;
-            const hasCount = count > 0;
-            return (
-              <div key={s.id} className="relative group">
-                <div
-                  className={`w-full aspect-square rounded-xl border flex items-center justify-center text-2xl relative ${
-                    !hasCount ? "bg-gray-100 opacity-50 border-gray-200" : "bg-white"
-                  }`}
-                  title={`${s.name}`}
-                >
-                  <img
-                    src={`/corns/${s.id}.png`}
-                    alt={s.name}
-                    className={!hasCount ? "opacity-40 w-8 h-8 object-contain" : "w-8 h-8 object-contain"}
-                  />
-                  {count > 0 && (
-                    <div className="absolute bottom-0 left-0 right-0 h-1/5 bg-amber-800/80 flex items-center justify-center rounded-b-xl pointer-events-none z-20">
-                      <span className="text-[7px] font-bold text-white">{count}</span>
-                    </div>
-                  )}
-                </div>
-                {/* 悬浮说明 */}
-                {hasCount && (
-                  <div className="pointer-events-none absolute z-10 hidden group-hover:block left-1/2 -translate-x-1/2 mt-1 w-44 p-2 rounded-lg border bg-white shadow">
-                    <div className="text-sm font-medium">{s.name}</div>
-                    <div className="text-xs text-slate-600">
-                      {t("sellPrice")} {s.sell} {t("coins")}
-                    </div>
-                    <div className="text-[11px] text-slate-500">{t("sellAtShop")}</div>
-                  </div>
-                )}
               </div>
             );
           })}
