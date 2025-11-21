@@ -744,7 +744,7 @@ function SocialFarmGame() {
                   className="hover:opacity-80 transition-opacity cursor-pointer"
                 >
                   <img
-                    src="/places/gluck.png"
+                    src="/places/g-luck.png"
                     alt="gluck"
                     className="w-full max-w-[84px] h-auto object-contain"
                     style={{
